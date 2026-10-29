@@ -1,0 +1,3 @@
+# The org runners on the dev machine carry this label.
+self-hosted-runner:
+  labels: [local]

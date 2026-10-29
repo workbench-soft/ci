@@ -1,0 +1,11 @@
+# Each week Dependabot opens one PR with the action updates.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directories: [/, /actions/setup]
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

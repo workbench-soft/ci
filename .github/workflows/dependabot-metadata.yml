@@ -1,0 +1,26 @@
+name: Dependabot metadata
+
+# dependabot-auto-merge.yml runs on workflow_run, where fetch-metadata has no PR to read.
+# A repo calls this from its Checks workflow, and the job stores the update type as an artifact.
+on:
+  workflow_call:
+
+jobs:
+  metadata:
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: [self-hosted, local]
+    # In a private repo the workflow token gets pull request access only when the job asks for it.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+      - run: echo "$UPDATE_TYPE" > update-type.txt
+        shell: bash
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dependabot-metadata
+          path: update-type.txt

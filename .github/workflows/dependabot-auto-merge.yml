@@ -1,0 +1,63 @@
+name: Dependabot auto-merge
+
+# Merges a Dependabot PR without a review after every check on its latest commit passes.
+# A major update waits for a person, since it can break the app in ways the checks don't catch.
+# A repo calls this from a workflow_run workflow that lists its check workflows.
+# The run that sees the last check pass does the merge.
+on:
+  workflow_call:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+    runs-on: [self-hosted, local]
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      # dependabot-metadata.yml stores the update type in the run of the check workflow.
+      # A repo whose checks don't call it gets no artifact, and then every update counts as minor.
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: dependabot-metadata
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - name: Merge when every check passed
+        run: |
+          update_type=$(cat update-type.txt 2>/dev/null || true)
+          if [ "$update_type" = version-update:semver-major ]; then
+            echo "A major update waits for a person to merge it."
+            exit 0
+          fi
+
+          pr=$(gh pr view "$BRANCH" --json number,author,headRefOid,state \
+            --jq 'select(.state == "OPEN" and .author.login == "app/dependabot" and .headRefOid == env.SHA) | .number')
+          if [ -z "$pr" ]; then
+            echo "No open Dependabot PR at $SHA."
+            exit 0
+          fi
+
+          states=$(gh api --paginate "repos/$GH_REPO/commits/$SHA/check-runs" \
+            --jq '.check_runs[] | "\(.status) \(.conclusion)"')
+          echo "$states"
+          if echo "$states" | grep -vqE '^completed (success|skipped|neutral)$'; then
+            echo "A check is still running or failed. PR #$pr waits."
+            exit 0
+          fi
+
+          gh pr merge "$pr" --squash --delete-branch
