@@ -1,11 +1,20 @@
 name: Dependabot auto-merge
 
-# Merges a Dependabot PR without a review after every check on its latest commit passes.
-# A major update waits for a person, since it can break the app in ways the checks don't catch.
-# A repo calls this from a workflow_run workflow that lists its check workflows.
-# The run that sees the last check pass does the merge.
+# Merges a Dependabot PR as soon as it opens. PR checks are off, so the checks on main catch a bad update.
+# A major update waits for a person, unless the repo sets allow_major.
+# A repo calls this from a pull_request_target workflow. That runs from main, so it gets a write token
+# although Dependabot opened the PR. It checks out no PR code.
 on:
   workflow_call:
+    inputs:
+      workflows:
+        description: Workflow files to run on main after the merge, such as "checks.yml"
+        type: string
+        required: true
+      allow_major:
+        description: Merge a major update too
+        type: boolean
+        default: false
 
 defaults:
   run:
@@ -13,51 +22,34 @@ defaults:
 
 jobs:
   merge:
-    if: >-
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: [self-hosted, local]
     permissions:
       contents: write
       pull-requests: write
-      checks: read
-      actions: read
+      actions: write
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      BRANCH: ${{ github.event.workflow_run.head_branch }}
-      SHA: ${{ github.event.workflow_run.head_sha }}
+      PR: ${{ github.event.pull_request.number }}
+      BASE: ${{ github.event.pull_request.base.ref }}
     steps:
-      # dependabot-metadata.yml stores the update type in the run of the check workflow.
-      # A repo whose checks don't call it gets no artifact, and then every update counts as minor.
-      - uses: actions/download-artifact@v8
-        continue-on-error: true
-        with:
-          name: dependabot-metadata
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ github.token }}
-      - name: Merge when every check passed
+      - id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+      - name: Merge
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          ALLOW_MAJOR: ${{ inputs.allow_major }}
+          WORKFLOWS: ${{ inputs.workflows }}
         run: |
-          update_type=$(cat update-type.txt 2>/dev/null || true)
-          if [ "$update_type" = version-update:semver-major ]; then
+          if [ "$UPDATE_TYPE" = version-update:semver-major ] && [ "$ALLOW_MAJOR" != true ]; then
             echo "A major update waits for a person to merge it."
             exit 0
           fi
 
-          pr=$(gh pr view "$BRANCH" --json number,author,headRefOid,state \
-            --jq 'select(.state == "OPEN" and .author.login == "app/dependabot" and .headRefOid == env.SHA) | .number')
-          if [ -z "$pr" ]; then
-            echo "No open Dependabot PR at $SHA."
-            exit 0
-          fi
+          gh pr merge "$PR" --squash --delete-branch
 
-          states=$(gh api --paginate "repos/$GH_REPO/commits/$SHA/check-runs" \
-            --jq '.check_runs[] | "\(.status) \(.conclusion)"')
-          echo "$states"
-          if echo "$states" | grep -vqE '^completed (success|skipped|neutral)$'; then
-            echo "A check is still running or failed. PR #$pr waits."
-            exit 0
-          fi
-
-          gh pr merge "$pr" --squash --delete-branch
+          # A merge made with the workflow token starts no push run, so start the checks on main by hand.
+          for workflow in $WORKFLOWS; do
+            gh workflow run "$workflow" --ref "$BASE"
+          done
