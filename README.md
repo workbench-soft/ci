@@ -37,6 +37,9 @@ jobs:
       allow_major: false    # optional
 ```
 
+- **List every push workflow** a merge made with the workflow token starts no push run. A workflow left out of `workflows` skips the Dependabot change.
+- **`workflow_dispatch`** each file in `workflows` needs this trigger, or the start fails after the merge.
+
 ## CI runs on main only
 
 Every workbench-soft repo runs its workflows on pushes to the default branch. PR runs are off: an agent runs the repo's tests and linter locally, merges, then may watch the run on main. A failure there gets its fix in a new PR.
