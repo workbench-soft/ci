@@ -53,7 +53,7 @@ To turn PR runs back on in a repo:
 
 ## Test a change
 
-`mise run lint` runs actionlint on the workflows. CI runs the same check on each push to main.
+`mise run lint` runs actionlint on the workflows. CI runs the same check on each push to main that changes more than Markdown.
 
 A change reaches every repo on merge. Before the merge, point one repo at the branch (`@my-branch`) and run its checks.
 
