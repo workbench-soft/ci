@@ -22,7 +22,8 @@ defaults:
 
 jobs:
   merge:
-    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    # A commit a person pushes to a Dependabot branch makes them the actor, so that PR waits for a review.
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
     runs-on: [self-hosted, local]
     permissions:
       contents: write
