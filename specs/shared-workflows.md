@@ -10,3 +10,14 @@ The app repos copied the same CI steps by hand, and the copies drifted. This rep
 - **Version** app repos call `@main`, so a merge here reaches each repo on its next run.
 - **Access** this repo is private. Settings, Actions, Access is set to the organization, so the other private repos can call it.
 - **Left per repo** the app checks and the release jobs. Their steps differ by stack.
+
+## 2026-10-30 Merge Dependabot PRs on open
+
+PR checks are off in the app repos, so the merge can't wait for them. The first version waited on `workflow_run` and read the update type from an artifact.
+
+- **Trigger** a repo calls `dependabot-auto-merge.yml` from `pull_request_target`, which runs from main and gets a write token. The job checks out no PR code.
+- **Metadata** the job runs `dependabot/fetch-metadata` itself. `dependabot-metadata.yml` is gone.
+- **Major updates** wait for a person, unless the repo sets `allow_major: true`.
+- **Checks after the merge** a merge made with the workflow token starts no push run. The job runs each file in the `workflows` input on main, and each one needs `workflow_dispatch`.
+- **Who merges** the job merges only when Dependabot opened the PR and Dependabot made the event. A commit a person pushes to the branch waits for that person.
+- **Run twice** a run that finds the PR already merged or closed stops, so the checks start once.
