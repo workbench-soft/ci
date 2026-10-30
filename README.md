@@ -4,9 +4,9 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 
 ## What is here
 
-| Path | What it does |
-| --- | --- |
-| `actions/setup` | Installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile` |
+| Path                                          | What it does                                                                                                |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `actions/setup`                               | Installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`                               |
 | `.github/workflows/dependabot-auto-merge.yml` | Merges a Dependabot PR as soon as it opens, then runs the checks on main. A major update waits for a person |
 
 ## Use it in a repo
@@ -34,7 +34,7 @@ jobs:
     uses: workbench-soft/ci/.github/workflows/dependabot-auto-merge.yml@main
     with:
       workflows: checks.yml # run on main after the merge
-      allow_major: false    # optional
+      allow_major: false # optional
 ```
 
 - **List every push workflow** a merge made with the workflow token starts no push run. A workflow left out of `workflows` skips the Dependabot change.
