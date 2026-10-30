@@ -48,6 +48,13 @@ jobs:
             exit 0
           fi
 
+          # A run queued behind an earlier one for the same PR finds it merged, and would start the checks twice.
+          state=$(gh pr view "$PR" --json state --jq .state)
+          if [ "$state" != OPEN ]; then
+            echo "PR #$PR is $state already."
+            exit 0
+          fi
+
           gh pr merge "$PR" --squash --delete-branch
 
           # A merge made with the workflow token starts no push run, so start the checks on main by hand.
