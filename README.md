@@ -57,6 +57,13 @@ To turn PR runs back on in a repo:
 
 A change reaches every repo on merge. Before the merge, point one repo at the branch (`@my-branch`) and run its checks.
 
+## Releases
+
+Each push to `main` that passes Lint gets a release, such as `v2026.10.30.1`.
+Its notes list the commits since the release before. The repos keep calling
+`@main`, so a release changes no repo by itself. To hold back changes from here,
+a repo can pin a tag in place of `@main`.
+
 ## Access
 
 This repo is private. Settings, Actions, General, Access is set to "Accessible from repositories in the organization". Without it, the other repos fail to load the workflows.
