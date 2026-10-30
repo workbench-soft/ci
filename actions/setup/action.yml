@@ -4,10 +4,10 @@ description: Installs the tools pinned in mise.toml and the pnpm dependencies fr
 inputs:
   install_args:
     description: Tools for mise to install, such as "node pnpm". Empty installs each tool in mise.toml.
-    default: ''
+    default: ""
   pnpm-install:
     description: Set to "false" to skip pnpm install.
-    default: 'true'
+    default: "true"
 
 runs:
   using: composite

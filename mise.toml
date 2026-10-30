@@ -1,8 +1,19 @@
 [tools]
 actionlint = "1.7.12"
+"npm:oxfmt" = "0.75.0"
 # actionlint checks the run scripts with shellcheck only when it finds one on PATH.
 shellcheck = "0.11.0"
+shfmt = "3.14.1"
 
 [tasks.lint]
-description = "Check the workflows with actionlint"
-run = "actionlint"
+description = "Check the workflows, the scripts and the format of every file"
+run = [
+  "actionlint",
+  "shellcheck .github/scripts/next-version.sh .github/scripts/release-notes.sh",
+  "shfmt -i 2 -ci -d .github/scripts",
+  "oxfmt --check",
+]
+
+[tasks.format]
+description = "Format the scripts and every other file"
+run = ["shfmt -i 2 -ci -w .github/scripts", "oxfmt"]
