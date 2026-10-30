@@ -1,5 +1,7 @@
 [tools]
-actionlint = "1.7.8"
+actionlint = "1.7.12"
+# actionlint checks the run scripts with shellcheck only when it finds one on PATH.
+shellcheck = "0.11.0"
 
 [tasks.lint]
 description = "Check the workflows with actionlint"

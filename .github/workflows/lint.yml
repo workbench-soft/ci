@@ -4,6 +4,8 @@ name: Lint
 on:
   push:
     branches: [main]
+    # Markdown holds no workflow, so a docs-only push skips the lint.
+    paths: ['**', '!**.md']
   # PR runs are off: agents run the tests and linter locally before they merge.
   # To run this on PRs again, uncomment the pull_request lines below.
   # pull_request:
