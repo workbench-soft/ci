@@ -1,6 +1,7 @@
 name: Release
 
-# Each push to main whose Lint run passes gets a release. The version is the date: 2026.10.30.1, then 2026.10.30.2.
+# A push to main whose Lint run passes gets a release, unless a newer push queues behind it: that one covers both.
+# The version is the date: 2026.10.30.1, then 2026.10.30.2.
 # The release carries notes only, since the repo builds no file to ship.
 on:
   workflow_run:
@@ -24,13 +25,15 @@ defaults:
 
 jobs:
   release:
+    # A dispatch on a branch other than main is refused, so a feature branch spends no release number.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
-    # One release runs at a time, so each sees the tag of the one before. A newer one cancels the stale one.
+    # One release runs at a time, so each sees the tag of the one before. A newer one waits for it.
+    # A cancel after `git push origin "$TAG"` would leave a tag with no release, and its commits in no notes.
     concurrency:
       group: release
-      cancel-in-progress: true
+      cancel-in-progress: false
     # The PC runner costs 0 minutes on a private repo.
     runs-on: [self-hosted, local]
     steps:
@@ -40,9 +43,12 @@ jobs:
           # The release notes and the next version need every earlier tag and commit.
           fetch-depth: 0
 
-      - name: Pick the next version
+      # A run that failed after its tag push keeps that tag when it runs again.
+      - name: Pick the version
         id: version
-        run: echo "tag=v$(.github/scripts/next-version.sh)" >> "$GITHUB_OUTPUT"
+        run: |
+          tag=$(git tag --points-at "$SHA" --list 'v[0-9]*.[0-9]*.[0-9]*.[0-9]*' | head -n 1)
+          echo "tag=${tag:-v$(.github/scripts/next-version.sh)}" >> "$GITHUB_OUTPUT"
 
       # A tag pushed with the workflow token doesn't start other workflows.
       - name: Tag the commit and publish the release
@@ -50,6 +56,9 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           .github/scripts/release-notes.sh "$TAG" > "$RUNNER_TEMP/notes.md"
-          git tag "$TAG" "$SHA"
-          git push origin "$TAG"
-          gh release create "$TAG" --verify-tag --notes-file "$RUNNER_TEMP/notes.md" --title "$TAG"
+          if ! git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            git tag "$TAG" "$SHA"
+            git push origin "$TAG"
+          fi
+          gh release view "$TAG" > /dev/null 2>&1 ||
+            gh release create "$TAG" --verify-tag --notes-file "$RUNNER_TEMP/notes.md" --title "$TAG"

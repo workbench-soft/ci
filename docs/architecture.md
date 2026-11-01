@@ -1,13 +1,20 @@
 # Architecture
 
-A composite action and a reusable workflow. App repos call them from their own workflows.
+A composite action and a reusable workflow. App repos call them from their own workflows. This repo's own pushes get a lint and a release.
 
 ```mermaid
 flowchart LR
-  app["App repo workflow"] -->|uses| setup["actions/setup<br/>mise + pnpm"]
-  app -->|calls| auto["dependabot-auto-merge.yml"]
+  subgraph app["App repo"]
+    job["Workflow job"] -->|uses| setup["actions/setup<br/>mise + pnpm"]
+    pr["pull_request_target"] -->|calls| auto["dependabot-auto-merge.yml"]
+  end
   setup --> tools["Pinned tools from mise.toml"]
-  auto --> gh["gh pr merge"]
+  auto --> gh["gh pr merge, gh workflow run"]
+  subgraph own["This repo"]
+    push["Push to main"] --> lint["lint.yml"]
+    lint -->|workflow_run| release["release.yml"]
+    release --> version["next-version.sh"] --> notes["release-notes.sh"] --> tag["Tag and GitHub release"]
+  end
 ```
 
 | Part       | Technology                    | Job                                                             |
@@ -16,6 +23,15 @@ flowchart LR
 | Auto merge | Reusable workflow, `gh` CLI   | Merges Dependabot PRs                                           |
 | Lint       | `lint.yml`                    | Checks this repo's own files                                    |
 | Release    | `release.yml`, shell          | Tags each push to main that passes Lint and publishes its notes |
+| Test       | `test-release.sh`, sh and git | Checks the two release scripts in a throwaway repo              |
+
+## Shared formats
+
+Two scripts share two formats, and `mise run test` keeps them in step.
+
+- **Tag** `v<yyyy.mm.dd>.<n>`. `next-version.sh` prints the date and the count, `release.yml` adds the `v`, and `release-notes.sh` finds the last one with `v[0-9]*.[0-9]*.[0-9]*`.
+- **Commit subject** `type(scope)!: text`. `release-notes.sh` sorts `feat`, `fix` and `perf` into sections and drops the type from the note.
+- **Templates** both scripts match the `repo-ci` templates in `agent-skills-private`. A fix lands in both, or the next repo gets the old script.
 
 ## Decisions
 

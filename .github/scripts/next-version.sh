@@ -10,6 +10,13 @@ if [ -e /usr/share/zoneinfo/Australia/Sydney ]; then
 else
   day=$(powershell.exe -NoProfile -Command "[TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UtcNow, 'AUS Eastern Standard Time').ToString('yyyy.MM.dd')" | tr -d '\r')
 fi
+case $day in
+  [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]) ;;
+  *)
+    echo "next-version.sh: no Sydney date, got '$day'" >&2
+    exit 1
+    ;;
+esac
 git tag --list "v$day.*" | awk -F. -v day="$day" '
   { if ($4 + 0 > last) last = $4 + 0 }
   END { print day "." last + 1 }'
