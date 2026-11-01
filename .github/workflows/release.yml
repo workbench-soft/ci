@@ -27,10 +27,11 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
-    # One release runs at a time, so each sees the tag of the one before. A newer one cancels the stale one.
+    # One release runs at a time, so each sees the tag of the one before. A newer one waits for it.
+    # A cancel after `git push origin "$TAG"` would leave a tag with no release, and its commits in no notes.
     concurrency:
       group: release
-      cancel-in-progress: true
+      cancel-in-progress: false
     # The PC runner costs 0 minutes on a private repo.
     runs-on: [self-hosted, local]
     steps:
