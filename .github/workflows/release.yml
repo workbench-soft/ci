@@ -42,9 +42,12 @@ jobs:
           # The release notes and the next version need every earlier tag and commit.
           fetch-depth: 0
 
-      - name: Pick the next version
+      # A run that failed after its tag push keeps that tag when it runs again.
+      - name: Pick the version
         id: version
-        run: echo "tag=v$(.github/scripts/next-version.sh)" >> "$GITHUB_OUTPUT"
+        run: |
+          tag=$(git tag --points-at "$SHA" --list 'v[0-9]*.[0-9]*.[0-9]*.[0-9]*' | head -n 1)
+          echo "tag=${tag:-v$(.github/scripts/next-version.sh)}" >> "$GITHUB_OUTPUT"
 
       # A tag pushed with the workflow token doesn't start other workflows.
       - name: Tag the commit and publish the release
@@ -52,6 +55,9 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           .github/scripts/release-notes.sh "$TAG" > "$RUNNER_TEMP/notes.md"
-          git tag "$TAG" "$SHA"
-          git push origin "$TAG"
-          gh release create "$TAG" --verify-tag --notes-file "$RUNNER_TEMP/notes.md" --title "$TAG"
+          if ! git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            git tag "$TAG" "$SHA"
+            git push origin "$TAG"
+          fi
+          gh release view "$TAG" > /dev/null 2>&1 ||
+            gh release create "$TAG" --verify-tag --notes-file "$RUNNER_TEMP/notes.md" --title "$TAG"
