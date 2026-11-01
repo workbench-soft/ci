@@ -45,7 +45,7 @@ flowchart TD
 1. A PR merges into `main` with a change beyond Markdown.
 2. `Lint` runs `mise run lint` on the PC runner.
 3. `Release` starts once `Lint` passes.
-4. `next-version.sh` reads today's tags and prints the next version, such as `2026.10.30.1`.
+4. `next-version.sh` reads today's tags and prints the next version, such as `2026.10.30.1`. A rerun reuses the tag a failed run already pushed.
 5. `release-notes.sh` groups the commits since the last tag by type.
 6. The job pushes the tag and publishes the release with the notes.
 

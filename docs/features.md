@@ -16,6 +16,6 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 
 ## Releases
 
-- **What it gives** a tagged release such as `v2026.10.30.1` for each push to `main` that passes `Lint`. Its notes list the commits since the release before.
+- **What it gives** a tagged release such as `v2026.10.30.1` after a push to `main` passes `Lint`. Its notes list the commits since the release before.
 - **Where** the [Releases page](https://github.com/workbench-soft/ci/releases).
-- **Limits** notes only, with no files to download.
+- **Limits** notes only, with no files to download. Pushes that land during one release run share the next release.
