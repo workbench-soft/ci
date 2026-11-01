@@ -24,8 +24,9 @@ defaults:
 
 jobs:
   release:
+    # `gh workflow run` takes the current branch as its ref, so a dispatch from a feature branch is refused.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
     # One release runs at a time, so each sees the tag of the one before. A newer one waits for it.
     # A cancel after `git push origin "$TAG"` would leave a tag with no release, and its commits in no notes.
