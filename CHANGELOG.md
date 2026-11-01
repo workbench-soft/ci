@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Markdown** markdownlint-cli2 lints the docs in `mise run lint`.
+
 - **Architecture decisions** `docs/architecture.md` gets a Decisions section. Each big choice names its reason, its cost and the rivals it beat.
 
 - **Lint and format** `mise run lint` checks the release scripts with shellcheck and shfmt, and every file with oxfmt, next to actionlint.
