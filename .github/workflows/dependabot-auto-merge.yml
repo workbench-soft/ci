@@ -55,6 +55,15 @@ jobs:
             exit 0
           fi
 
+          # A workflow without workflow_dispatch can't start after the merge, and a merge made with the workflow
+          # token starts no push run. So the PR stays open until the caller fixes its list.
+          for workflow in $WORKFLOWS; do
+            if ! gh workflow view "$workflow" --ref "$BASE" --yaml | grep -Eq '^[[:space:]]*workflow_dispatch:'; then
+              echo "::error::$workflow is missing on $BASE or has no workflow_dispatch trigger, so it can't run after the merge. Add the trigger, then reopen PR #$PR."
+              exit 1
+            fi
+          done
+
           gh pr merge "$PR" --squash --delete-branch
 
           # A merge made with the workflow token starts no push run, so start the checks on main by hand.
