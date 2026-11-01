@@ -21,3 +21,9 @@ PR checks are off in the app repos, so the merge can't wait for them. The first 
 - **Checks after the merge** a merge made with the workflow token starts no push run. The job runs each file in the `workflows` input on main, and each one needs `workflow_dispatch`.
 - **Who merges** the job merges only when Dependabot opened the PR and Dependabot made the event. A commit a person pushes to the branch waits for that person.
 - **Run twice** a run that finds the PR already merged or closed stops, so the checks start once.
+
+## 2026-11-01 A bad `workflows` list stops the merge
+
+`gh workflow run` fails for a file without `workflow_dispatch`, and the step ran it after the merge. The merged commit then got no check and no release, and the loop stopped at the first file.
+
+- **Check first** the job reads each listed file on the base branch with `gh workflow view --yaml` and looks for a `workflow_dispatch:` line. A miss fails the run before the merge with an error that names the file, so the PR stays open.

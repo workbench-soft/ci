@@ -38,7 +38,7 @@ jobs:
 ```
 
 - **List every push workflow** a merge made with the workflow token starts no push run. A workflow left out of `workflows` skips the Dependabot change.
-- **`workflow_dispatch`** each file in `workflows` needs this trigger, or the start fails after the merge.
+- **`workflow_dispatch`** each file in `workflows` needs this trigger. Without it the run fails before the merge and names the file, and the PR stays open.
 
 ## CI runs on main only
 
@@ -53,13 +53,14 @@ To turn PR runs back on in a repo:
 
 ## Test a change
 
-`mise run lint` runs actionlint on the workflows. CI runs the same check on each push to main that changes more than Markdown.
+`mise run lint` runs actionlint on the workflows, and `mise run test` checks the release scripts against a throwaway git repo. CI runs the lint on each push to main that changes more than Markdown.
 
 A change reaches every repo on merge. Before the merge, point one repo at the branch (`@my-branch`) and run its checks.
 
 ## Releases
 
-Each push to `main` that passes Lint gets a release, such as `v2026.10.30.1`.
+A push to `main` that passes Lint gets a release, such as `v2026.10.30.1`.
+Pushes that land during one release run share the next release.
 Its notes list the commits since the release before. The repos keep calling
 `@main`, so a release changes no repo by itself. To hold back changes from here,
 a repo can pin a tag in place of `@main`.
