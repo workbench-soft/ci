@@ -56,7 +56,7 @@ EOF
 
 git tag "v$day.1"
 commit -m 'feat: add a thing' -m 'Why it helps.' -m 'A note for developers.'
-commit -m 'fix(notes)!: keep the body' -m 'Co-authored-by: Test <test@example.com>'
+commit -m 'fix(notes)!: keep the body' -m 'Co-Authored-By: Test <test@example.com>'
 commit -m 'perf: skip a call'
 git checkout -q -b side
 commit -m 'chore: on a branch'
