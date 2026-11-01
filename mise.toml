@@ -1,5 +1,6 @@
 [tools]
 actionlint = "1.7.12"
+"npm:markdownlint-cli2" = "0.24.0"
 "npm:oxfmt" = "0.75.0"
 # actionlint checks the run scripts with shellcheck only when it finds one on PATH.
 shellcheck = "0.11.0"
@@ -8,6 +9,7 @@ shfmt = "3.14.1"
 [tasks.lint]
 description = "Check the workflows, the scripts and the format of every file"
 run = [
+  "markdownlint-cli2",
   "actionlint",
   "shellcheck .github/scripts/next-version.sh .github/scripts/release-notes.sh",
   "shfmt -i 2 -ci -d .github/scripts",
