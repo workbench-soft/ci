@@ -12,7 +12,7 @@ on:
 
 jobs:
   actionlint:
-    runs-on: [self-hosted, local]
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
     defaults:
       run:
         shell: bash

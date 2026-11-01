@@ -35,7 +35,7 @@ jobs:
       group: release
       cancel-in-progress: false
     # The PC runner costs 0 minutes on a private repo.
-    runs-on: [self-hosted, local]
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
