@@ -11,7 +11,7 @@ description = "Check the workflows, the scripts and the format of every file"
 run = [
   "markdownlint-cli2",
   "actionlint",
-  "shellcheck .github/scripts/next-version.sh .github/scripts/release-notes.sh",
+  "shellcheck .github/scripts/next-version.sh .github/scripts/release-notes.sh .github/scripts/test-release.sh",
   "shfmt -i 2 -ci -d .github/scripts",
   "oxfmt --check",
 ]
@@ -19,3 +19,7 @@ run = [
 [tasks.format]
 description = "Format the scripts and every other file"
 run = ["shfmt -i 2 -ci -w .github/scripts", "oxfmt"]
+
+[tasks.test]
+description = "Check the release scripts against a throwaway git repo"
+run = "sh .github/scripts/test-release.sh"
