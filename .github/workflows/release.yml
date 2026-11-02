@@ -24,11 +24,34 @@ defaults:
     shell: bash
 
 jobs:
-  release:
+  # Holds the release while an agent session still has a PR open. Dependabot and PRs idle for 6 hours don't hold it.
+  gate:
     # A dispatch on a branch other than main is refused, so a feature branch spends no release number.
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
+    permissions:
+      pull-requests: read
+    outputs:
+      go: ${{ steps.open.outputs.go }}
+    steps:
+      - id: open
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh pr list -R "$GITHUB_REPOSITORY" --state open --json number,author,updatedAt --jq '[.[] | select((.author.is_bot | not) and (.updatedAt | fromdateiso8601) > now - 21600) | "#" + (.number | tostring)] | join(" ")')
+          if [ -n "$open" ] && [ "$GITHUB_EVENT_NAME" != workflow_dispatch ]; then
+            echo "::notice::Release waits for the open PRs $open"
+            echo go=false >> "$GITHUB_OUTPUT"
+          else
+            echo go=true >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
     # One release runs at a time, so each sees the tag of the one before. A newer one waits for it.
     # A cancel after `git push origin "$TAG"` would leave a tag with no release, and its commits in no notes.
     concurrency:
