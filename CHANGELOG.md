@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Docs** each heading of `docs/features.md` links its spec, and each feature that had no spec got one.
 - **CI** portable jobs read their runner from the org variables `CI_RUNNER` and `CI_HEAVY_RUNNER`, so they build on Oracle or Blacksmith while the free minutes last, then on the PC. Jobs that need Windows or the PC keep their PC labels.
 
 - **Dependabot auto-merge** a listed workflow without `workflow_dispatch` stops the run before the merge, so the PR stays open and the error names the file.
