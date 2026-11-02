@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Docs** each heading of `docs/features.md` links its spec, and each feature that had no spec got one.
 - **Dependabot auto-merge** a listed workflow without `workflow_dispatch` stops the run before the merge, so the PR stays open and the error names the file.
 - **Releases** a newer release run waits in place of cancelling the running one, and a rerun reuses the tag a failed run pushed. A release started by hand runs on `main` only.
 - **Release scripts** `next-version.sh` stops without a date, the notes skip a `Co-Authored-By` line in any case, and `mise run test` checks both scripts.
