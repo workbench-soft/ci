@@ -27,3 +27,10 @@ PR checks are off in the app repos, so the merge can't wait for them. The first 
 `gh workflow run` fails for a file without `workflow_dispatch`, and the step ran it after the merge. The merged commit then got no check and no release, and the loop stopped at the first file.
 
 - **Check first** the job reads each listed file on the base branch with `gh workflow view --yaml` and looks for a `workflow_dispatch:` line. A miss fails the run before the merge with an error that names the file, so the PR stays open.
+
+## 2026-11-03 This repo merges its own Dependabot PRs
+
+The app repos called the workflow, and this repo didn't. Its Dependabot PRs, such as ci#7, stayed open.
+
+- **Caller** `merge-dependabot.yml` calls `dependabot-auto-merge.yml` from `pull_request_target`, with `workflows: lint.yml`.
+- **Lint on dispatch** `lint.yml` gets `workflow_dispatch`, so the check before the merge passes.

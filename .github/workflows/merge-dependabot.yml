@@ -1,0 +1,17 @@
+name: Merge Dependabot PRs
+
+# This repo's own Dependabot PRs go through the workflow it ships, the way each app repo calls it.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  merge:
+    uses: ./.github/workflows/dependabot-auto-merge.yml
+    with:
+      workflows: lint.yml

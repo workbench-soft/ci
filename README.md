@@ -8,6 +8,7 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `actions/setup`                               | Installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`                               |
 | `.github/workflows/dependabot-auto-merge.yml` | Merges a Dependabot PR as soon as it opens, then runs the checks on main. A major update waits for a person |
+| `.github/workflows/merge-dependabot.yml`      | Calls that workflow for this repo's own Dependabot PRs, then runs Lint on main                              |
 
 ## Use it in a repo
 
