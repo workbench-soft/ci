@@ -52,11 +52,11 @@ jobs:
   release:
     needs: gate
     if: needs.gate.outputs.go == 'true'
-    # One release runs at a time, so each sees the tag of the one before. A newer one waits for it.
-    # A cancel after `git push origin "$TAG"` would leave a tag with no release, and its commits in no notes.
+    # One release runs at a time, so each sees the tag of the one before. A newer one cancels the stale one.
+    # gh release create makes the tag with the release, so a cancel leaves no tag without a release.
     concurrency:
       group: release
-      cancel-in-progress: false
+      cancel-in-progress: true
     # The PC runner costs 0 minutes on a private repo.
     runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
     steps:
@@ -79,9 +79,5 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           .github/scripts/release-notes.sh "$TAG" > "$RUNNER_TEMP/notes.md"
-          if ! git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
-            git tag "$TAG" "$SHA"
-            git push origin "$TAG"
-          fi
           gh release view "$TAG" > /dev/null 2>&1 ||
-            gh release create "$TAG" --verify-tag --notes-file "$RUNNER_TEMP/notes.md" --title "$TAG"
+            gh release create "$TAG" --target "$SHA" --notes-file "$RUNNER_TEMP/notes.md" --title "$TAG"
