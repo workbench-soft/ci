@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Release** a newer green main cancels the running release, so the newest build ships first.
 - **Own Dependabot PRs** `merge-dependabot.yml` merges this repo's Dependabot PRs through the shared workflow, then runs Lint on main.
 - **CI** Release waits while a PR of an agent session is open, so the last merge of a batch releases them all.
 - **Docs** each heading of `docs/features.md` links its spec, and each feature that had no spec got one.
