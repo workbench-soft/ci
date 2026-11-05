@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Dependabot releases** a token merge dispatches release builds paired with
+  the selected checks, so both start without waiting for the checks to finish.
+
 - **Parallel release builds** releases build beside checks after a push. Only publication waits for matching checks; open PRs hold no build.
 
 - **Release** a newer green main cancels the running release, so the newest build ships first.
