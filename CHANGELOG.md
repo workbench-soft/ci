@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **CI** keep mise shims in the runner's temporary directory so setup won't replace a shim held open by a running tool.
 - **Dependabot releases** a token merge dispatches release builds paired with
   the selected checks, so both start without waiting for the checks to finish.
 

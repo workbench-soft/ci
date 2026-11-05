@@ -20,6 +20,10 @@ The setup step in a job, after `actions/checkout`:
     install_args: node pnpm # optional, defaults to every tool in mise.toml
 ```
 
+The action keeps mise shims under `runner.temp` for each job. This lets
+self-hosted runners install tools without replacing a machine-wide shim that
+a running process may still be using.
+
 The repo's `dependabot-auto-merge.yml`:
 
 ```yaml

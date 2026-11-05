@@ -13,6 +13,9 @@ runs:
   using: composite
   steps:
     - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+      env:
+        # A running tool can keep the machine-wide uvx shim open on self-hosted runners.
+        MISE_SHIMS_DIR: ${{ runner.temp }}/mise-shims
       with:
         # The tools stay on the dev machine between runs. A cache would upload them to GitHub on each run.
         cache: false

@@ -64,11 +64,16 @@ Two scripts share two formats, and `mise run test` keeps them in step.
 ### Setup step: a composite action over mise
 
 - **Picked** `actions/setup` is a composite action. It runs
-  `jdx/mise-action` for the tools in `mise.toml`, then
+  `jdx/mise-action` for the tools in `mise.toml`, with shims under the
+  runner's temporary directory, then
   `pnpm install --frozen-lockfile`.
+- **Why** a running process on a self-hosted runner can hold the shared
+  `uvx.exe` shim open. A job-local shim path lets mise update its tools without
+  renaming that shared executable.
 - **Why** a composite action runs inside the caller's job, so the caller adds
   its own checks after it. The org rule pins every tool in `mise.toml`.
-- **Trade-off** a repo whose tools mise can't install needs its own steps.
+- **Trade-off** a repo whose tools mise can't install needs its own steps; a
+  job recreates its small shim directory while tool installs stay shared.
 - **Rejected**
   - **A reusable workflow for setup** it is a whole job, so the caller's
     steps can't follow it in the same job.
