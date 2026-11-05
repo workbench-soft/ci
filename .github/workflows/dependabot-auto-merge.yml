@@ -55,6 +55,25 @@ jobs:
             exit 0
           fi
 
+          # A token merge emits no push, so dispatch the release workflows paired with these checks too.
+          workflow_files=$(gh api "repos/$GH_REPO/actions/workflows?per_page=100" --jq '.workflows[] | select(.state == "active" and (.path | startswith(".github/workflows/"))) | .path | sub("^\\.github/workflows/"; "")')
+          while IFS= read -r paired_workflow; do
+            paired_yaml=$(gh workflow view "$paired_workflow" --ref "$BASE" --yaml)
+            if ! grep -Eq '^  push:' <<< "$paired_yaml" || ! grep -q 'wait-for-checks.sh' <<< "$paired_yaml"; then
+              continue
+            fi
+            paired_check=$(sed -nE 's/^[[:space:]]*CHECKS_WORKFLOW:[[:space:]]*([^[:space:]]+).*$/\1/p' <<< "$paired_yaml" | tr -d '\042\047' | head -n 1)
+            paired_check=${paired_check:-checks.yml}
+            case " $WORKFLOWS " in
+              *" $paired_check "*)
+                case " $WORKFLOWS " in
+                  *" $paired_workflow "*) ;;
+                  *) WORKFLOWS="$WORKFLOWS $paired_workflow" ;;
+                esac
+                ;;
+            esac
+          done <<< "$workflow_files"
+
           # A workflow without workflow_dispatch can't start after the merge, and a merge made with the workflow
           # token starts no push run. So the PR stays open until the caller fixes its list.
           for workflow in $WORKFLOWS; do
@@ -66,7 +85,7 @@ jobs:
 
           gh pr merge "$PR" --squash --delete-branch
 
-          # A merge made with the workflow token starts no push run, so start the checks on main by hand.
+          # Checks and their paired release builds start together on the merged branch.
           for workflow in $WORKFLOWS; do
             gh workflow run "$workflow" --ref "$BASE"
           done

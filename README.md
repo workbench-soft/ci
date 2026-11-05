@@ -38,7 +38,7 @@ jobs:
       allow_major: false # optional
 ```
 
-- **List every push workflow** a merge made with the workflow token starts no push run. A workflow left out of `workflows` skips the Dependabot change.
+- **List the checks** a token merge starts no push run. The shared workflow also dispatches each push release workflow whose publication guard names one of those checks.
 - **`workflow_dispatch`** each file in `workflows` needs this trigger. Without it the run fails before the merge and names the file, and the PR stays open.
 
 ## CI runs on main only
