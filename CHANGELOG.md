@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Parallel release builds** releases build beside checks after a push. Only publication waits for matching checks; open PRs hold no build.
+
 - **Release** a newer green main cancels the running release, so the newest build ships first.
 - **Own Dependabot PRs** `merge-dependabot.yml` merges this repo's Dependabot PRs through the shared workflow, then runs Lint on main.
 - **CI** Release waits while a PR of an agent session is open, so the last merge of a batch releases them all.

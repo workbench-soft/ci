@@ -128,3 +128,7 @@ Two scripts share two formats, and `mise run test` keeps them in step.
   - **Semver tags** the callers read `@main` and skip the version
     number.
 - **Cost to undo** low. `release.yml` and its two scripts.
+
+## Release build timing
+
+Release builds start on pushes alongside their matching checks. Publication waits for successful checks of the same commit and branch. Open PRs do not delay the build. LocalCI records the causing run, commit and PR before cancelling a replaced build or a release whose checks failed.
