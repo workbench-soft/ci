@@ -6,14 +6,15 @@ Each flow starts in a workflow of an app repo, or in a push to this one, and end
 
 1. A workflow in the app repo checks out the code.
 2. The job calls `workbench-soft/ci/actions/setup@main`.
-3. `jdx/mise-action` installs the tools `mise.toml` pins, or the ones `install_args` names.
-4. `pnpm install --frozen-lockfile` runs, unless `pnpm-install` is `"false"`.
-5. The job's own steps run with those tools.
+3. The action directs mise shims to the job's temporary directory.
+4. `jdx/mise-action` installs the tools `mise.toml` pins, or the ones `install_args` names.
+5. `pnpm install --frozen-lockfile` runs, unless `pnpm-install` is `"false"`.
+6. The job's own steps run with those tools.
 
 ```mermaid
 flowchart LR
   checkout["actions/checkout"] --> setup["actions/setup@main"]
-  setup --> mise["mise install"]
+  setup --> shims["Mise shims in runner temp"] --> mise["mise install"]
   mise --> pnpm{"pnpm-install?"}
   pnpm -->|true| install["pnpm install --frozen-lockfile"]
   pnpm -->|false| steps["The job's own steps"]
