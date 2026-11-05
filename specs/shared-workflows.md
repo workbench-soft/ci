@@ -34,3 +34,10 @@ The app repos called the workflow, and this repo didn't. Its Dependabot PRs, suc
 
 - **Caller** `merge-dependabot.yml` calls `dependabot-auto-merge.yml` from `pull_request_target`, with `workflows: lint.yml`.
 - **Lint on dispatch** `lint.yml` gets `workflow_dispatch`, so the check before the merge passes.
+
+## 2026-11-06 Keep mise shims in each job
+
+On self-hosted runners, a running process can keep a machine-wide mise shim open while a workflow tries to update it. This makes `mise-action` fail during setup before the job starts its checks or deploy.
+
+- **Setup** set `MISE_SHIMS_DIR` to `runner.temp/mise-shims` for `jdx/mise-action`; keep installed tools in the shared mise data directory.
+- **Trade-off** each job recreates a small shim directory, while installed tool versions remain cached on the runner.
