@@ -60,6 +60,8 @@ To turn PR runs back on in a repo:
 
 `mise run lint` runs actionlint on the workflows, and `mise run test` checks the release scripts against a throwaway git repo. CI runs the lint on each push to main that changes more than Markdown.
 
+Each direct `jdx/mise-action` step sets `MISE_SHIMS_DIR` to `${{ runner.temp }}/mise-shims`, as the shared setup action does. This keeps CI from replacing a machine-wide shim while another process uses it.
+
 A change reaches every repo on merge. Before the merge, point one repo at the branch (`@my-branch`) and run its checks.
 
 ## Releases

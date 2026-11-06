@@ -21,6 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        env:
+          MISE_SHIMS_DIR: ${{ runner.temp }}/mise-shims
         with:
           cache: false
       - run: mise run lint
