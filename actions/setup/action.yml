@@ -27,7 +27,7 @@ runs:
       env:
         MISE_INSTALL_ARGS: ${{ inputs.install_args }}
       run: |
-        $mutexName = if ([System.OperatingSystem]::IsWindows()) { 'Global\\WorkbenchSoftMiseInstall' } else { 'WorkbenchSoftMiseInstall' }
+        $mutexName = if ([System.OperatingSystem]::IsWindows()) { 'Global\WorkbenchSoftMiseInstall' } else { 'WorkbenchSoftMiseInstall' }
         $mutex = [System.Threading.Mutex]::new($false, $mutexName)
         $acquired = $false
         try {
