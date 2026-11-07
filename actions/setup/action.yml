@@ -22,12 +22,13 @@ runs:
         # The shared Windows machine runs many independent runner services.
         # Install tools below under a machine-wide mutex rather than racing on the shared mise directory.
         install: false
-    - name: Install mise tools without concurrent filesystem writes
-      shell: pwsh
+    - name: Install mise tools without concurrent filesystem writes (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
       env:
         MISE_INSTALL_ARGS: ${{ inputs.install_args }}
       run: |
-        $mutexName = if ([System.OperatingSystem]::IsWindows()) { 'Global\WorkbenchSoftMiseInstall' } else { 'WorkbenchSoftMiseInstall' }
+        $mutexName = 'Global\WorkbenchSoftMiseInstall'
         $mutex = [System.Threading.Mutex]::new($false, $mutexName)
         $acquired = $false
         try {
@@ -44,6 +45,18 @@ runs:
           if ($acquired) { $mutex.ReleaseMutex() }
           $mutex.Dispose()
         }
+    - name: Install mise tools (non-Windows)
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        MISE_INSTALL_ARGS: ${{ inputs.install_args }}
+      run: |
+        if [ -n "$MISE_INSTALL_ARGS" ]; then
+          read -r -a tools <<< "$MISE_INSTALL_ARGS"
+          mise install "${tools[@]}"
+        else
+          mise install
+        fi
     - if: inputs.pnpm-install == 'true'
       shell: bash
       run: mise x -- pnpm install --frozen-lockfile
