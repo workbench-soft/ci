@@ -19,7 +19,31 @@ runs:
       with:
         # The tools stay on the dev machine between runs. A cache would upload them to GitHub on each run.
         cache: false
-        install_args: ${{ inputs.install_args }}
+        # The shared Windows machine runs many independent runner services.
+        # Install tools below under a machine-wide mutex rather than racing on the shared mise directory.
+        install: false
+    - name: Install mise tools without concurrent filesystem writes
+      shell: pwsh
+      env:
+        MISE_INSTALL_ARGS: ${{ inputs.install_args }}
+      run: |
+        $mutexName = if ([System.OperatingSystem]::IsWindows()) { 'Global\WorkbenchSoftMiseInstall' } else { 'WorkbenchSoftMiseInstall' }
+        $mutex = [System.Threading.Mutex]::new($false, $mutexName)
+        $acquired = $false
+        try {
+          try { $acquired = $mutex.WaitOne([TimeSpan]::FromMinutes(30)) }
+          catch [System.Threading.AbandonedMutexException] { $acquired = $true }
+          if (-not $acquired) { throw 'Timed out waiting for the shared mise installation lock' }
+          $arguments = @('install')
+          if ($env:MISE_INSTALL_ARGS.Trim()) {
+            $arguments += $env:MISE_INSTALL_ARGS.Trim().Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+          }
+          & mise @arguments
+          if ($LASTEXITCODE -ne 0) { throw "mise install failed with exit code $LASTEXITCODE" }
+        } finally {
+          if ($acquired) { $mutex.ReleaseMutex() }
+          $mutex.Dispose()
+        }
     - if: inputs.pnpm-install == 'true'
       shell: bash
       run: mise x -- pnpm install --frozen-lockfile
