@@ -31,7 +31,8 @@ runs:
         $mutex = [System.Threading.Mutex]::new($false, $mutexName)
         $acquired = $false
         try {
-          $acquired = $mutex.WaitOne([TimeSpan]::FromMinutes(30))
+          try { $acquired = $mutex.WaitOne([TimeSpan]::FromMinutes(30)) }
+          catch [System.Threading.AbandonedMutexException] { $acquired = $true }
           if (-not $acquired) { throw 'Timed out waiting for the shared mise installation lock' }
           $arguments = @('install')
           if ($env:MISE_INSTALL_ARGS.Trim()) {
