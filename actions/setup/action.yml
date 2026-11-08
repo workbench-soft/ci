@@ -49,9 +49,9 @@ runs:
         } finally {
           if ($acquired) { $mutex.ReleaseMutex() }
           $mutex.Dispose()
+        }
         POWERSHELL
         powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(cygpath -w "$script_dir/install.ps1")"
-        }
     - name: Install mise tools (non-Windows)
       if: runner.os != 'Windows'
       shell: bash
