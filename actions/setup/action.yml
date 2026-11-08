@@ -24,10 +24,15 @@ runs:
         install: false
     - name: Install mise tools without concurrent filesystem writes (Windows)
       if: runner.os == 'Windows'
-      shell: powershell
+      # Git Bash is available on the Windows runners even when pwsh is absent.
+      # Launch the bundled Windows PowerShell explicitly and keep the machine-wide mutex.
+      shell: bash
       env:
         MISE_INSTALL_ARGS: ${{ inputs.install_args }}
       run: |
+        script_dir=$(mktemp -d)
+        trap 'rm -rf "$script_dir"' EXIT
+        cat > "$script_dir/install.ps1" <<'POWERSHELL'
         $mutexName = 'Global\WorkbenchSoftMiseInstall'
         $mutex = [System.Threading.Mutex]::new($false, $mutexName)
         $acquired = $false
@@ -44,6 +49,8 @@ runs:
         } finally {
           if ($acquired) { $mutex.ReleaseMutex() }
           $mutex.Dispose()
+        POWERSHELL
+        powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$(cygpath -w "$script_dir/install.ps1")"
         }
     - name: Install mise tools (non-Windows)
       if: runner.os != 'Windows'
