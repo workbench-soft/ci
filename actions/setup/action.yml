@@ -57,12 +57,16 @@ runs:
           mise x -- pnpm install --frozen-lockfile
           exit 0
         fi
-        # A hardlink into the PC's shared pnpm store fails reads with EBUSY while any other link
-        # of the file gets deleted, such as another runner's old checkout. Copies are the job's own.
-        if [ -d node_modules ] && [ ! -e node_modules/.ci-copy ]; then
+        # Every hardlink of a file shares it: a delete of one link, such as an old checkout or a dev
+        # worktree, fails reads through the others with EBUSY. The runners get a store of their own,
+        # C:\ci\_pnpm-store, and copy from it, so no other link to a file they read ever exists.
+        store="$(cygpath -w "$(dirname "$(dirname "$RUNNER_WORKSPACE")")")\\_pnpm-store"
+        # The later steps of the job run pnpm too, and pnpm refuses a store other than the install's.
+        { echo "pnpm_config_store_dir=$store"; echo "pnpm_config_package_import_method=copy"; } >> "$GITHUB_ENV"
+        if [ -d node_modules ] && [ ! -e node_modules/.ci-store ]; then
           # The job start hook of local-ci deletes _trash-* folders beside the checkouts.
           trash="$(dirname "$RUNNER_WORKSPACE")/_trash-$(date +%Y%m%d%H%M%S)-node_modules-$(basename "$RUNNER_WORKSPACE")"
           mv node_modules "$trash"
         fi
-        mise x -- pnpm install --frozen-lockfile --package-import-method=copy
-        touch node_modules/.ci-copy
+        pnpm_config_store_dir="$store" pnpm_config_package_import_method=copy mise x -- pnpm install --frozen-lockfile
+        touch node_modules/.ci-store
