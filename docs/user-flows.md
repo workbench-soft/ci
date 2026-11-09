@@ -27,7 +27,7 @@ flowchart LR
 2. The repo's `dependabot-auto-merge.yml` runs on `pull_request_target` and calls the shared workflow.
 3. The job stops when a person made the event, when the update is major and `allow_major` is off, or when the PR is closed already.
 4. `gh pr merge --squash --delete-branch` merges the PR.
-5. `gh workflow run` starts each file in `workflows` on `main`.
+5. `gh workflow run` starts each file in `workflows` on `main`, and each push release workflow that waits on one of them.
 
 ```mermaid
 flowchart TD
@@ -44,21 +44,19 @@ flowchart TD
 ## Release this repo
 
 1. A PR merges into `main` with a change beyond Markdown.
-2. `Lint` runs `mise run lint` on the PC runner.
-3. `Release` starts once `Lint` passes.
-4. `next-version.sh` reads today's tags and prints the next version, such as `2026.10.30.1`. A rerun reuses the tag a failed run already pushed.
+2. `Lint` and `Release` start side by side on the PC runner.
+3. `next-version.sh` reads today's tags and prints the next version, such as `2026.10.30.1`.
+4. `wait-for-checks.sh` waits for the Lint run of the same commit, and stops the release when Lint fails.
 5. `release-notes.sh` groups the commits since the last tag by type.
-6. The job pushes the tag and publishes the release with the notes.
+6. `gh release create` makes the tag and the release with the notes.
 
 ```mermaid
 flowchart LR
   push["Push to main"] --> lint["Lint"]
-  lint -->|workflow_run, success| release["Release"]
+  push --> release["Release"]
   release --> version["next-version.sh"]
-  version --> notes["release-notes.sh"]
-  notes --> tag["git tag, gh release create"]
+  version --> wait["wait-for-checks.sh"]
+  lint -->|success| wait
+  wait --> notes["release-notes.sh"]
+  notes --> tag["gh release create"]
 ```
-
-## Release build timing
-
-Release builds start on pushes alongside their matching checks. Publication waits for successful checks of the same commit and branch. Open PRs do not delay the build. LocalCI records the causing run, commit and PR before cancelling a replaced build or a release whose checks failed.
