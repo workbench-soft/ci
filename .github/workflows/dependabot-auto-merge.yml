@@ -55,12 +55,12 @@ jobs:
             exit 0
           fi
 
-          # A token merge emits no push, so a push release workflow whose wait-for-checks.sh waits on one of these
+          # A token merge emits no push, so a push release workflow whose wait-for-checks.sh or release-gate.sh reads one of these
           # checks gets dispatched too. CHECKS_WORKFLOW defaults to checks.yml, as in the script.
           for paired in $(gh api "repos/$GH_REPO/actions/workflows?per_page=100" --jq '.workflows[] | select(.state == "active") | .path | select(startswith(".github/workflows/")) | ltrimstr(".github/workflows/")'); do
             yaml=$(gh workflow view "$paired" --ref "$BASE" --yaml) || continue
             grep -Eq '^  push:' <<< "$yaml" || continue
-            grep -q wait-for-checks.sh <<< "$yaml" || continue
+            grep -Eq "wait-for-checks.sh|release-gate.sh" <<< "$yaml" || continue
             check=$(sed -nE 's/^[[:space:]]*CHECKS_WORKFLOW:[[:space:]]*([^[:space:]]+).*$/\1/p' <<< "$yaml" | tr -d '\042\047' | head -n 1)
             case " $WORKFLOWS " in *" ${check:-checks.yml} "*) ;; *) continue ;; esac
             case " $WORKFLOWS " in *" $paired "*) ;; *) WORKFLOWS="$WORKFLOWS $paired" ;; esac

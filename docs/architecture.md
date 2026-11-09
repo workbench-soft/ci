@@ -10,10 +10,10 @@ flowchart LR
   end
   setup --> tools["Pinned tools from mise.toml"]
   auto --> gh["gh pr merge, gh workflow run"]
+  auto -.->|dispatches the paired| appRelease["Release of the app repo"]
   subgraph own["This repo"]
     push["Push to main"] --> lint["lint.yml"]
-    push --> release["release.yml"]
-    release -.->|waits for| lint
+    lint -->|workflow_run, success| release["release.yml"]
     release --> version["next-version.sh"] --> notes["release-notes.sh"] --> tag["Tag and GitHub release"]
   end
 ```
