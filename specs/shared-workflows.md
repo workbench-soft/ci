@@ -55,3 +55,11 @@ The 2026-11-06 fix set `MISE_SHIMS_DIR` on the `jdx/mise-action` step only. A st
 The app repos moved Release to `release-gate.sh`, which ties the build to Checks of the same commit. `dependabot-auto-merge.yml` looked only for `wait-for-checks.sh`, so a Dependabot merge in such a repo started Checks with no Release build beside them.
 
 - **Paired release** the job dispatches a push release workflow that calls `wait-for-checks.sh` or `release-gate.sh`, when its `CHECKS_WORKFLOW` is one of the listed checks.
+
+## 2026-11-10 Copy packages on the PC runners
+
+`expo export` in memories and tickalot failed with `EBUSY: resource busy or locked, open '...node_modules\...'` on NIFELHEIM-1 to 8. Each `node_modules` file was a hardlink into the one pnpm store at `%LOCALAPPDATA%\pnpm\store`, so each file had up to 160 links: 8 runners, their `_trash-*` folders and the dev clones. A delete of any one link makes a read through another link fail for a moment. A test read 20 files in a loop while `rd /s /q` removed their other links, and 3210 of 210,000 reads failed with `EBUSY`. Since the disk fell under 60 GB on 2026-11-09, each job start deletes the other checkouts of its runner, so these deletes run all day.
+
+- **Copy on Windows** `actions/setup` runs `pnpm install` with `--package-import-method=copy` on Windows. A checkout then owns its files, and a delete elsewhere can't lock them. macOS and Linux keep the default.
+- **Old checkouts** a `node_modules` without the `.ci-copy` marker still holds hardlinks. The action moves it to `_trash-<time>-node_modules-<repo>` beside the checkouts, where the job start hook of local-ci deletes it, and installs anew.
+- **Cost** a cold install copies about 1.4 GB for memories, in place of links. A warm install checks the folder only, as before.
