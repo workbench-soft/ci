@@ -44,19 +44,16 @@ flowchart TD
 ## Release this repo
 
 1. A PR merges into `main` with a change beyond Markdown.
-2. `Lint` and `Release` start side by side on the PC runner.
+2. `Lint` runs on the PC runner. `Release` starts once it passes, and a failed Lint starts no release.
 3. `next-version.sh` reads today's tags and prints the next version, such as `2026.10.30.1`.
-4. `wait-for-checks.sh` waits for the Lint run of the same commit, and stops the release when Lint fails.
-5. `release-notes.sh` groups the commits since the last tag by type.
-6. `gh release create` makes the tag and the release with the notes.
+4. `release-notes.sh` groups the commits since the last tag by type.
+5. `gh release create` makes the tag and the release with the notes.
 
 ```mermaid
 flowchart LR
   push["Push to main"] --> lint["Lint"]
-  push --> release["Release"]
+  lint -->|success| release["Release"]
   release --> version["next-version.sh"]
-  version --> wait["wait-for-checks.sh"]
-  lint -->|success| wait
-  wait --> notes["release-notes.sh"]
+  version --> notes["release-notes.sh"]
   notes --> tag["gh release create"]
 ```

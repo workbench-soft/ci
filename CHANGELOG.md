@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **CI** Release starts on `workflow_run` once Checks pass on `main`, one at a time. It no longer holds a PC runner while it waits, which starved Checks and timed releases out.
+
 - **Release** `release.yml` and `wait-for-checks.sh` match the `repo-ci` templates, and shellcheck checks every release script.
 - **Setup** the job's own mise shim folder reaches every step, the separate install step and the caller's steps too. Lint runs through the setup action and runs `mise run test`.
 - **Dependabot releases** a token merge dispatches release builds paired with

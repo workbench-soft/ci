@@ -124,9 +124,9 @@ Two scripts share two formats, and `mise run test` keeps them in step.
 
 ### Releases: a date tag after each green Lint
 
-- **Picked** `release.yml` starts on each push to `main` beside Lint. Its
-  `wait-for-checks.sh` step holds publication until Lint of the same commit
-  passes, then it tags the commit, such as `v2026.10.30.1`.
+- **Picked** `release.yml` starts on `workflow_run` once Lint passes on a
+  push to `main`, so no job holds a runner while it waits. It tags that
+  commit, such as `v2026.10.30.1`.
 - **Why** the org rule gives every repo a release with a date version. A
   merge left no tagged point to go back to.
 - **Trade-off** the tag gives the date only, with no size of the change. A push of
