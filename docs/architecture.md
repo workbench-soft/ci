@@ -67,7 +67,10 @@ Two scripts share two formats, and `mise run test` keeps them in step.
 - **Picked** `actions/setup` is a composite action. It runs
   `jdx/mise-action` for the tools in `mise.toml`, with shims under the
   runner's temporary directory, then
-  `pnpm install --frozen-lockfile`.
+  `pnpm install --frozen-lockfile`, with `--package-import-method=copy` on
+  Windows.
+- **Why copy** on the PC every hardlink of a store file shares one file, and
+  a delete of any link fails reads through the others with `EBUSY`.
 - **Why** a running process on a self-hosted runner can hold the shared
   `uvx.exe` shim open. A job-local shim path lets mise update its tools without
   renaming that shared executable.

@@ -4,7 +4,7 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 
 ## Setup step
 
-- **What it gives** `actions/setup` installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`.
+- **What it gives** `actions/setup` installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`. On Windows it copies packages in place of hardlinks, so another runner deleting its checkout can't fail a read with `EBUSY`.
 - **Where** a repo adds `uses: workbench-soft/ci/actions/setup@main` after checkout.
 - **Limits** `install_args` picks the tools, and `pnpm-install: "false"` skips the install in a repo without a lockfile.
 

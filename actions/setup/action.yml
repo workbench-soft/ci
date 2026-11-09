@@ -52,4 +52,17 @@ runs:
         mise install $MISE_INSTALL_ARGS
     - if: inputs.pnpm-install == 'true'
       shell: bash
-      run: mise x -- pnpm install --frozen-lockfile
+      run: |
+        if [ "$RUNNER_OS" != Windows ]; then
+          mise x -- pnpm install --frozen-lockfile
+          exit 0
+        fi
+        # A hardlink into the PC's shared pnpm store fails reads with EBUSY while any other link
+        # of the file gets deleted, such as another runner's old checkout. Copies are the job's own.
+        if [ -d node_modules ] && [ ! -e node_modules/.ci-copy ]; then
+          # The job start hook of local-ci deletes _trash-* folders beside the checkouts.
+          trash="$(dirname "$RUNNER_WORKSPACE")/_trash-$(date +%Y%m%d%H%M%S)-node_modules-$(basename "$RUNNER_WORKSPACE")"
+          mv node_modules "$trash"
+        fi
+        mise x -- pnpm install --frozen-lockfile --package-import-method=copy
+        touch node_modules/.ci-copy

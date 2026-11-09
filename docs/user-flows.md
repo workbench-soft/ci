@@ -8,7 +8,7 @@ Each flow starts in a workflow of an app repo, or in a push to this one, and end
 2. The job calls `workbench-soft/ci/actions/setup@main`.
 3. The action directs mise shims to the job's temporary directory.
 4. `jdx/mise-action` installs the tools `mise.toml` pins, or the ones `install_args` names.
-5. `pnpm install --frozen-lockfile` runs, unless `pnpm-install` is `"false"`.
+5. `pnpm install --frozen-lockfile` runs, unless `pnpm-install` is `"false"`. On Windows it copies each package from the store, and first moves a hardlinked `node_modules` to `_trash-*`.
 6. The job's own steps run with those tools.
 
 ```mermaid
