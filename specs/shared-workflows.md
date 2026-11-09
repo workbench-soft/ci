@@ -41,3 +41,11 @@ On self-hosted runners, a running process can keep a machine-wide mise shim open
 
 - **Setup** set `MISE_SHIMS_DIR` to `runner.temp/mise-shims` for `jdx/mise-action`; keep installed tools in the shared mise data directory.
 - **Trade-off** each job recreates a small shim directory, while installed tool versions remain cached on the runner.
+
+## 2026-11-09 Week review: shims reach every step
+
+The 2026-11-06 fix set `MISE_SHIMS_DIR` on the `jdx/mise-action` step only. A step's `env` doesn't reach later steps, so the separate `mise install` step and the caller's own steps still wrote the shared shim folder.
+
+- **Env for the job** the first step of `actions/setup` writes `MISE_SHIMS_DIR` to `$GITHUB_ENV`, so mise-action, the install steps and the caller's steps all use the job's own shim folder.
+- **Plain PowerShell** the Windows install step runs with `shell: powershell`, in place of a script written from Git Bash.
+- **Lint dogfoods the action** `lint.yml` calls `./actions/setup`, so a broken setup action fails this repo's Lint first. It also runs `mise run test`, and pins `actions/checkout` to a commit.

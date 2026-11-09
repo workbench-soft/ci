@@ -20,9 +20,9 @@ The setup step in a job, after `actions/checkout`:
     install_args: node pnpm # optional, defaults to every tool in mise.toml
 ```
 
-The action keeps mise shims under `runner.temp` for each job. This lets
-self-hosted runners install tools without replacing a machine-wide shim that
-a running process may still be using.
+The action keeps mise shims under `runner.temp` for the whole job, the
+caller's steps too. On Windows it installs the tools one job at a time,
+since the PC runners share one mise folder.
 
 The repo's `dependabot-auto-merge.yml`:
 
@@ -60,7 +60,7 @@ To turn PR runs back on in a repo:
 
 `mise run lint` runs actionlint on the workflows, and `mise run test` checks the release scripts against a throwaway git repo. CI runs the lint on each push to main that changes more than Markdown.
 
-Each direct `jdx/mise-action` step sets `MISE_SHIMS_DIR` to `${{ runner.temp }}/mise-shims`, as the shared setup action does. This keeps CI from replacing a machine-wide shim while another process uses it.
+Lint runs through `actions/setup`, so a broken setup action fails here first. A repo that calls `jdx/mise-action` directly should write `MISE_SHIMS_DIR=$RUNNER_TEMP/mise-shims` to `$GITHUB_ENV` before it, as the setup action does.
 
 A change reaches every repo on merge. Before the merge, point one repo at the branch (`@my-branch`) and run its checks.
 
