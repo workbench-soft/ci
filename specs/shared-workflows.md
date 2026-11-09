@@ -49,3 +49,9 @@ The 2026-11-06 fix set `MISE_SHIMS_DIR` on the `jdx/mise-action` step only. A st
 - **Env for the job** the first step of `actions/setup` writes `MISE_SHIMS_DIR` to `$GITHUB_ENV`, so mise-action, the install steps and the caller's steps all use the job's own shim folder.
 - **Plain PowerShell** the Windows install step runs with `shell: powershell`, in place of a script written from Git Bash.
 - **Lint dogfoods the action** `lint.yml` calls `./actions/setup`, so a broken setup action fails this repo's Lint first. It also runs `mise run test`, and pins `actions/checkout` to a commit.
+
+## 2026-11-10 Dependabot merges dispatch the new release shape
+
+The app repos moved Release to `release-gate.sh`, which ties the build to Checks of the same commit. `dependabot-auto-merge.yml` looked only for `wait-for-checks.sh`, so a Dependabot merge in such a repo started Checks with no Release build beside them.
+
+- **Paired release** the job dispatches a push release workflow that calls `wait-for-checks.sh` or `release-gate.sh`, when its `CHECKS_WORKFLOW` is one of the listed checks.

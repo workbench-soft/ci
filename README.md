@@ -67,8 +67,8 @@ A change reaches every repo on merge. Before the merge, point one repo at the br
 ## Releases
 
 A push to `main` that passes Lint gets a release, such as `v2026.10.30.1`.
-The release starts beside Lint, and only its publication waits for Lint of the
-same commit.
+Release starts on `workflow_run` once Lint passes, so no job holds a runner
+while it waits. A run by hand publishes only when Lint of the commit passed.
 Its notes list the commits since the release before. The repos keep calling
 `@main`, so a release changes no repo by itself. To hold back changes from here,
 a repo can pin a tag in place of `@main`.

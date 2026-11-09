@@ -10,13 +10,14 @@ release before, so a reader sees what changed without reading the log.
 
 1. A PR merges into `main`.
 2. `Lint` runs on the push and passes.
-3. Release, started beside Lint, tags the commit and publishes the notes on the Releases page.
+3. Release starts once Lint passes, tags the commit and publishes the notes on the Releases page.
 
 ## How it works
 
-- **`.github/workflows/release.yml`** starts on a push to `main` beside
-  `lint.yml`. `.github/scripts/wait-for-checks.sh` holds publication until
-  Lint of the same commit passes. It runs on the PC runner `[self-hosted, local]` and costs 0 GitHub minutes.
+- **`.github/workflows/release.yml`** starts on `workflow_run` once Lint
+  passes on a push to `main`. One release runs at a time. A run by hand
+  looks up Lint of the commit once and stops unless it passed. It runs on the
+  runner `CI_RUNNER` names, or the PC runner `[self-hosted, local]`.
 - **`.github/scripts/next-version.sh`** picks the tag: the date, then the
   number of the release that day.
 - **`.github/scripts/release-notes.sh`** writes the notes from the commits
@@ -46,3 +47,8 @@ The week moved the release from `workflow_run` to a push run beside Lint, then d
 - **Template** `release.yml` and `wait-for-checks.sh` now match `repo-ci` templates. A second release side by side with the same version fails, and the next push ships its commits.
 - **Lint** shellcheck checks every script in `.github/scripts`.
 - **Docs** one copy of the timing text, in the release flow itself.
+
+### 2026-11-10 docs follow the workflow_run release
+
+- **Why** the 2026-11-09 commit moved Release to `workflow_run` of Lint and removed `wait-for-checks.sh`. The README, this spec and the diagram still said Release starts beside Lint.
+- **Changes** the README, `docs/architecture.md` and the top of this spec describe the `workflow_run` start.
