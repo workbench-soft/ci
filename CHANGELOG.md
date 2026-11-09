@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Setup** the job's own mise shim folder reaches every step, the separate install step and the caller's steps too. Lint runs through the setup action and runs `mise run test`.
 - Isolate the lint job's mise shims so a running local tool cannot block CI setup.
 
 - **CI** keep mise shims in the runner's temporary directory so setup won't replace a shim held open by a running tool.
