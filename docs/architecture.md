@@ -12,7 +12,8 @@ flowchart LR
   auto --> gh["gh pr merge, gh workflow run"]
   subgraph own["This repo"]
     push["Push to main"] --> lint["lint.yml"]
-    lint -->|workflow_run| release["release.yml"]
+    push --> release["release.yml"]
+    release -.->|waits for| lint
     release --> version["next-version.sh"] --> notes["release-notes.sh"] --> tag["Tag and GitHub release"]
   end
 ```
@@ -123,8 +124,9 @@ Two scripts share two formats, and `mise run test` keeps them in step.
 
 ### Releases: a date tag after each green Lint
 
-- **Picked** `release.yml` tags each push to `main` that passes Lint, such as
-  `v2026.10.30.1`, on the PC runner.
+- **Picked** `release.yml` starts on each push to `main` beside Lint. Its
+  `wait-for-checks.sh` step holds publication until Lint of the same commit
+  passes, then it tags the commit, such as `v2026.10.30.1`.
 - **Why** the org rule gives every repo a release with a date version. A
   merge left no tagged point to go back to.
 - **Trade-off** the tag gives the date only, with no size of the change. A push of
@@ -133,7 +135,3 @@ Two scripts share two formats, and `mise run test` keeps them in step.
   - **Semver tags** the callers read `@main` and skip the version
     number.
 - **Cost to undo** low. `release.yml` and its two scripts.
-
-## Release build timing
-
-Release builds start on pushes alongside their matching checks. Publication waits for successful checks of the same commit and branch. Open PRs do not delay the build. LocalCI records the causing run, commit and PR before cancelling a replaced build or a release whose checks failed.

@@ -10,12 +10,13 @@ release before, so a reader sees what changed without reading the log.
 
 1. A PR merges into `main`.
 2. `Lint` runs on the push and passes.
-3. Release tags the commit and publishes the notes on the Releases page.
+3. Release, started beside Lint, tags the commit and publishes the notes on the Releases page.
 
 ## How it works
 
-- **`.github/workflows/release.yml`** starts when `lint.yml` finishes on a
-  push to `main`. It runs on the PC runner `[self-hosted, local]` and costs 0 GitHub minutes.
+- **`.github/workflows/release.yml`** starts on a push to `main` beside
+  `lint.yml`. `.github/scripts/wait-for-checks.sh` holds publication until
+  Lint of the same commit passes. It runs on the PC runner `[self-hosted, local]` and costs 0 GitHub minutes.
 - **`.github/scripts/next-version.sh`** picks the tag: the date, then the
   number of the release that day.
 - **`.github/scripts/release-notes.sh`** writes the notes from the commits
@@ -37,3 +38,11 @@ release before, so a reader sees what changed without reading the log.
   `repo-ci` templates. `.gitattributes` keeps LF endings on `*.sh`.
 - **Steps** this spec, then the workflow and scripts, then the docs.
 - **Docs** `README.md`, `CHANGELOG.md`, `docs/features.md` and `docs/architecture.md`.
+
+### 2026-11-09 week review: the release matches the repo-ci template
+
+The week moved the release from `workflow_run` to a push run beside Lint, then dropped the open PR gate and the concurrency group. It left a bash copy of `wait-for-checks.sh` without the run bit and outside the shellcheck task, and comments about a tag push that no longer happens.
+
+- **Template** `release.yml` and `wait-for-checks.sh` now match `repo-ci` templates. A second release side by side with the same version fails, and the next push ships its commits.
+- **Lint** shellcheck checks every script in `.github/scripts`.
+- **Docs** one copy of the timing text, in the release flow itself.

@@ -11,7 +11,7 @@ description = "Check the workflows, the scripts and the format of every file"
 run = [
   "markdownlint-cli2",
   "actionlint",
-  "shellcheck .github/scripts/next-version.sh .github/scripts/release-notes.sh .github/scripts/test-release.sh",
+  "sh -c 'shellcheck .github/scripts/*.sh'",
   "shfmt -i 2 -ci -d .github/scripts",
   "oxfmt --check",
 ]

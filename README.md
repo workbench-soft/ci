@@ -67,7 +67,8 @@ A change reaches every repo on merge. Before the merge, point one repo at the br
 ## Releases
 
 A push to `main` that passes Lint gets a release, such as `v2026.10.30.1`.
-Pushes that land during one release run share the next release.
+The release starts beside Lint, and only its publication waits for Lint of the
+same commit.
 Its notes list the commits since the release before. The repos keep calling
 `@main`, so a release changes no repo by itself. To hold back changes from here,
 a repo can pin a tag in place of `@main`.
@@ -75,7 +76,3 @@ a repo can pin a tag in place of `@main`.
 ## Access
 
 This repo is private. Settings, Actions, General, Access is set to "Accessible from repositories in the organization". Without it, the other repos fail to load the workflows.
-
-## Release build timing
-
-Release builds start on pushes alongside their matching checks. Publication waits for successful checks of the same commit and branch. Open PRs do not delay the build. LocalCI records the causing run, commit and PR before cancelling a replaced build or a release whose checks failed.
