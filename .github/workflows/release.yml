@@ -1,7 +1,7 @@
 name: Release
 
 # Each push to main gets a release once its Lint run passes. The version is the date: 2026.10.30.1, then 2026.10.30.2.
-# Release starts once Lint pass on main, so no job holds a runner while it waits.
+# Release starts once Lint passes on main, so no job holds a runner while it waits.
 on:
   workflow_run:
     workflows: [Lint]

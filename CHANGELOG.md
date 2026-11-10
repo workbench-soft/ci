@@ -2,9 +2,13 @@
 
 ## Unreleased
 
-- **Lint before the push** a pre-push hook runs `mise run lint`, so a lint or format error stays on the PC instead of failing Checks on `main`.
+- **Dependabot releases** a failed lookup of the workflow list stops the run before the merge, so the PR stays open in place of merging without its paired release.
+- **Lint token** the Lint workflow gets a read-only token.
+- **Docs** the changelog names the runner store as `C:\ci\_pnpm-store`.
 
-- **Setup** on Windows `pnpm install` copies packages from a store of the runners, `C:ci_pnpm-store`, in place of hardlinks into the shared one, so a delete of another checkout no longer fails `expo export` with `EBUSY`. A hardlinked `node_modules` moves to `_trash-*` once.
+- **Lint before the push** a pre-push hook runs `mise run lint`, so a lint or format error stays on the PC instead of failing Lint on `main`.
+
+- **Setup** on Windows `pnpm install` copies packages from a store of the runners, `C:\ci\_pnpm-store`, in place of hardlinks into the shared one, so a delete of another checkout no longer fails `expo export` with `EBUSY`. A hardlinked `node_modules` moves to `_trash-*` once.
 - **Dependabot releases** a Dependabot merge also dispatches a release workflow that uses `release-gate.sh`, so repos on the new Release shape get a build beside their checks.
 - **Docs** the README, the architecture diagram and the release spec describe the `workflow_run` start of Release.
 
