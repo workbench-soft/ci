@@ -12,6 +12,10 @@ on:
   # To run this on PRs again, uncomment the pull_request lines below.
   # pull_request:
 
+# The lint only reads the repo.
+permissions:
+  contents: read
+
 jobs:
   actionlint:
     runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
