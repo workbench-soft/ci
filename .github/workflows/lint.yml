@@ -12,6 +12,12 @@ on:
   # To run this on PRs again, uncomment the pull_request lines below.
   # pull_request:
 
+# A newer push to the same branch or PR cancels this run on GitHub's side.
+# The local-ci page cancels the runs GitHub leaves, such as those of a merged PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 # The lint only reads the repo.
 permissions:
   contents: read

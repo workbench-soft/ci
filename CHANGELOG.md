@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Older runs stop on GitHub** a newer push to `main` cancels the Checks and the release build of the older commit through `concurrency`, with the local-ci page off too.
+
 - **Dependabot releases** a failed lookup of the workflow list stops the run before the merge, so the PR stays open in place of merging without its paired release.
 - **Lint token** the Lint workflow gets a read-only token.
 - **Docs** the changelog names the runner store as `C:\ci\_pnpm-store`.
