@@ -87,6 +87,7 @@ jobs:
 ```
 
 - **Check first** the `ios-check` job runs on the org's `CI_RUNNER` and stops the run before the macOS job when an item is missing.
+- **npm apps** an app with `package-lock.json` skips `pnpm install` and runs `cap` through `npm exec`. It passes `install_args: node` and installs in `web_build`, such as `npm ci && npm run build`.
 - **Build** `expo prebuild --platform ios`, or the web build with `cap sync ios`, then `pod install` and `xcodebuild` in Release for `iphonesimulator` with signing off.
 - **Run** an iPhone simulator of the newest iOS boots, the app launches for `launch.png`, and Maestro `cli-2.12.1` runs each flow under `e2e/maestro/`.
 - **Artifact** `ios-simulator` holds the screenshots, the Maestro report and debug output, crash reports and the last 300 lines of the xcodebuild log. `gh run download <run> -n ios-simulator` fetches it.
