@@ -9,6 +9,9 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 | `actions/setup`                               | Installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`, copying packages on Windows  |
 | `.github/workflows/dependabot-auto-merge.yml` | Merges a Dependabot PR as soon as it opens, then runs the checks on main. A major update waits for a person |
 | `.github/workflows/merge-dependabot.yml`      | Calls that workflow for this repo's own Dependabot PRs, then runs Lint on main                              |
+| `scripts/ios-check.ts`                        | Lists each Android only piece of an app with no iOS plan, and fails on one missing from `ios-check.json`    |
+| `actions/ios-check`                           | Runs `ios-check.ts` in a job of the app repo                                                                |
+| `.github/workflows/ios-simulator.yml`         | Builds an Expo or Capacitor app for the iPhone simulator, runs its Maestro flows, uploads the screenshots   |
 
 ## Use it in a repo
 
@@ -45,6 +48,50 @@ jobs:
 - **List the checks** a token merge starts no push run. The shared workflow also dispatches each push release workflow whose publication guard names one of those checks.
 - **`workflow_dispatch`** each file in `workflows` needs this trigger. Without it the run fails before the merge and names the file, and the PR stays open.
 
+## iOS check and simulator build
+
+The plan for the iPhone apps sits in `specs/ios-apps.md` of the `workspace` repo, and the details of these pieces in [specs/ios-apps.md](specs/ios-apps.md).
+
+The app repo's `mise.toml` runs the check on the PC, from the `ci` clone in the workspace:
+
+```toml
+[tasks.ios-check]
+description = "List the Android only pieces with no iOS plan"
+run = "node {{env.WBS_ROOT}}/ci/scripts/ios-check.ts ."
+```
+
+Each item prints as `missing` or `allowed`. An item the app hides on iOS on purpose goes in `ios-check.json` beside `package.json`, with its reason:
+
+```json
+{ "allow": { "package:expo-intent-launcher": "every call sits behind Platform.OS === 'android'" } }
+```
+
+The app repo's `.github/workflows/ios.yml` calls the build. A macOS minute counts as 10, so it runs by hand:
+
+```yaml
+name: iOS simulator
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ios:
+    uses: workbench-soft/ci/.github/workflows/ios-simulator.yml@main
+    with:
+      kind: expo # or capacitor
+      app_dir: . # optional, such as apps/mobile
+      # scheme, workspace, web_build, install_args, xcode and device are optional too
+    secrets:
+      build_env: |
+        EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
+```
+
+- **Check first** the `ios-check` job runs on the org's `CI_RUNNER` and stops the run before the macOS job when an item is missing.
+- **Build** `expo prebuild --platform ios`, or the web build with `cap sync ios`, then `pod install` and `xcodebuild` in Release for `iphonesimulator` with signing off.
+- **Run** an iPhone simulator of the newest iOS boots, the app launches for `launch.png`, and Maestro `cli-2.12.1` runs each flow under `e2e/maestro/`.
+- **Artifact** `ios-simulator` holds the screenshots, the Maestro report and debug output, crash reports and the last 300 lines of the xcodebuild log. `gh run download <run> -n ios-simulator` fetches it.
+- **Another workflow** `uses: workbench-soft/ci/actions/ios-check@main` with `app_dir` runs the check alone, after `actions/setup` puts Node 24 on PATH.
+
 ## CI runs on main only
 
 Every workbench-soft repo runs its workflows on pushes to the default branch. PR runs are off: an agent runs the repo's tests and linter locally, merges, then may watch the run on main. A failure there gets its fix in a new PR.
@@ -58,7 +105,7 @@ To turn PR runs back on in a repo:
 
 ## Test a change
 
-`mise run lint` runs actionlint on the workflows, and `mise run test` checks the release scripts against a throwaway git repo. CI runs the lint on each push to main that changes more than Markdown.
+`mise run lint` runs actionlint on the workflows and oxlint and `tsc` on the scripts. `mise run test` checks the release scripts against a throwaway git repo, and `ios-check.ts` with Vitest. CI runs the lint on each push to main that changes more than Markdown.
 
 Lint runs through `actions/setup`, so a broken setup action fails here first. A repo that calls `jdx/mise-action` directly should write `MISE_SHIMS_DIR=$RUNNER_TEMP/mise-shims` to `$GITHUB_ENV` before it, as the setup action does.
 

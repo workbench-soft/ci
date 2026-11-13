@@ -1,0 +1,203 @@
+name: iOS simulator
+
+# Builds an Expo or Capacitor app for the iPhone simulator, launches it and runs its Maestro flows.
+# A macOS minute counts as 10 on a private repo, so callers start it by hand or on release.
+on:
+  workflow_call:
+    inputs:
+      kind:
+        description: expo or capacitor
+        type: string
+        required: true
+      app_dir:
+        description: The app folder, where package.json, ios-check.json and e2e/maestro sit.
+        type: string
+        default: "."
+      workspace:
+        description: The .xcworkspace or .xcodeproj, relative to app_dir. Empty finds the one under ios/.
+        type: string
+        default: ""
+      scheme:
+        description: The Xcode scheme. Empty takes the workspace name.
+        type: string
+        default: ""
+      web_build:
+        description: The web build a Capacitor app runs before cap sync.
+        type: string
+        default: pnpm run build
+      install_args:
+        description: The mise tools the build needs. Empty installs each tool in mise.toml.
+        type: string
+        default: node pnpm
+      xcode:
+        description: An Xcode version such as 26.1. Empty keeps the runner's default.
+        type: string
+        default: ""
+      device:
+        description: A simulator name such as "iPhone 17". Empty takes an iPhone of the newest iOS.
+        type: string
+        default: ""
+    secrets:
+      build_env:
+        description: KEY=value lines the build reads, such as EXPO_PUBLIC_FIREBASE_API_KEY. Each value gets masked.
+        required: false
+
+# The jobs read the code and upload an artifact.
+permissions:
+  contents: read
+
+jobs:
+  # A missing iOS plan fails here, on a cheap runner, before a macOS minute is spent.
+  ios-check:
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: workbench-soft/ci/actions/setup@main
+        with:
+          install_args: node
+          pnpm-install: "false"
+      - uses: workbench-soft/ci/actions/ios-check@main
+        with:
+          app_dir: ${{ inputs.app_dir }}
+
+  simulator:
+    needs: ios-check
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      # mise x installs only what install_args named, so a tool the build skips costs no minutes.
+      MISE_EXEC_AUTO_INSTALL: "false"
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.app_dir }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Pick the output folder and Xcode
+        working-directory: .
+        env:
+          XCODE: ${{ inputs.xcode }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/ios-simulator"
+          echo "IOS_OUT=$RUNNER_TEMP/ios-simulator" >> "$GITHUB_ENV"
+          if [ -n "$XCODE" ]; then sudo xcode-select -s "/Applications/Xcode_$XCODE.app"; fi
+          xcodebuild -version
+      - uses: workbench-soft/ci/actions/setup@main
+        with:
+          install_args: ${{ inputs.install_args }}
+      - name: Load the build env
+        env:
+          BUILD_ENV: ${{ secrets.build_env }}
+        run: |
+          while IFS= read -r line; do
+            case "$line" in "" | "#"*) continue ;; esac
+            value="${line#*=}"
+            if [ -n "$value" ]; then echo "::add-mask::$value"; fi
+            echo "$line" >> "$GITHUB_ENV"
+          done <<< "$BUILD_ENV"
+      - name: Make the iOS project
+        env:
+          KIND: ${{ inputs.kind }}
+          WEB_BUILD: ${{ inputs.web_build }}
+        run: |
+          case "$KIND" in
+            expo) mise x -- pnpm exec expo prebuild --platform ios --no-install ;;
+            capacitor)
+              mise x -- bash -c "$WEB_BUILD"
+              if [ -d ios ]; then mise x -- pnpm exec cap sync ios; else mise x -- pnpm exec cap add ios; fi
+              ;;
+            *) echo "::error::kind is $KIND, expected expo or capacitor"; exit 1 ;;
+          esac
+      - name: Install the pods
+        run: |
+          podfile=$(find ios -maxdepth 2 -name Podfile -not -path '*/Pods/*' | head -n 1)
+          if [ -z "$podfile" ]; then echo "No Podfile, so Swift Package Manager resolves the packages."; exit 0; fi
+          cd "$(dirname "$podfile")" && mise x -- pod install
+      # The Release build bundles the JS as well, so an import iOS can't load fails here.
+      - name: Build for the simulator
+        env:
+          WORKSPACE: ${{ inputs.workspace }}
+          SCHEME: ${{ inputs.scheme }}
+        run: |
+          if [ -z "$WORKSPACE" ]; then
+            WORKSPACE=$(find ios -maxdepth 2 -name '*.xcworkspace' -not -path '*.xcodeproj/*' -not -path '*/Pods/*' | head -n 1)
+            [ -n "$WORKSPACE" ] || WORKSPACE=$(find ios -maxdepth 2 -name '*.xcodeproj' -not -path '*/Pods/*' | head -n 1)
+          fi
+          if [ -z "$WORKSPACE" ]; then echo "::error::No Xcode workspace or project under ios/"; exit 1; fi
+          name=$(basename "$WORKSPACE")
+          SCHEME="${SCHEME:-${name%.*}}"
+          flag=-workspace
+          case "$WORKSPACE" in *.xcodeproj) flag=-project ;; esac
+          echo "Building $WORKSPACE, scheme $SCHEME"
+          status=0
+          mise x -- xcodebuild "$flag" "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/derived" CODE_SIGNING_ALLOWED=NO build \
+            > "$RUNNER_TEMP/xcodebuild.log" 2>&1 || status=$?
+          tail -n 300 "$RUNNER_TEMP/xcodebuild.log" > "$IOS_OUT/xcodebuild-tail.log"
+          tail -n 40 "$RUNNER_TEMP/xcodebuild.log"
+          exit "$status"
+      - name: Boot an iPhone simulator
+        env:
+          DEVICE: ${{ inputs.device }}
+        run: |
+          # Picks the named iPhone, or any iPhone, on the newest iOS runtime.
+          pick=$(xcrun simctl list devices available -j | jq -r --arg name "$DEVICE" '
+            [.devices | to_entries[] | select(.key | test("SimRuntime\\.iOS-"))
+              | (.key | capture("iOS-(?<a>[0-9]+)-(?<b>[0-9]+)") | [(.a | tonumber), (.b | tonumber)]) as $v
+              | .value[] | select(.name | startswith("iPhone")) | select($name == "" or .name == $name)
+              | {v: $v, udid, name}]
+            | sort_by(.v) | last // empty | "\(.udid) \(.name)"')
+          if [ -z "$pick" ]; then echo "::error::No iPhone simulator matches '$DEVICE'"; exit 1; fi
+          echo "Booting $pick"
+          udid="${pick%% *}"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
+      - name: Install and launch the app
+        run: |
+          app=$(find "$RUNNER_TEMP/derived/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' | head -n 1)
+          bundle=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")
+          echo "APP_ID=$bundle" >> "$GITHUB_ENV"
+          xcrun simctl install "$SIM_UDID" "$app"
+          xcrun simctl launch "$SIM_UDID" "$bundle"
+          # The first screen needs time to load the JS bundle.
+          sleep 20
+          xcrun simctl io "$SIM_UDID" screenshot "$IOS_OUT/launch.png"
+          if ! xcrun simctl spawn "$SIM_UDID" launchctl list | grep -q "$bundle"; then
+            echo "::error::$bundle stopped within 20 seconds of launch"
+            exit 1
+          fi
+      - name: Run the Maestro flows
+        run: |
+          if [ ! -d e2e/maestro ]; then echo "No e2e/maestro folder, so only the launch screenshot is taken."; exit 0; fi
+          # The PC pins the same Maestro in the home mise config.
+          tools="java@temurin-21 maestro@cli-2.12.1"
+          # Word splitting turns the list into two tools.
+          # shellcheck disable=SC2086
+          mise install $tools
+          out="$IOS_OUT/maestro"
+          mkdir -p "$out"
+          status=0
+          # shellcheck disable=SC2086
+          mise x $tools -- maestro --device "$SIM_UDID" test e2e/maestro \
+            --format junit --output "$out/report.xml" \
+            --test-output-dir "$out" --debug-output "$out/debug" || status=$?
+          # takeScreenshot writes beside the flows on some versions, so the new pictures join the artifact.
+          find . -name '*.png' -newer "$IOS_OUT/launch.png" -not -path './node_modules/*' -not -path './ios/*' \
+            -exec cp {} "$out/" \;
+          exit "$status"
+      - name: Collect crash reports
+        if: always()
+        run: |
+          mkdir -p "$IOS_OUT/crashes"
+          find "$HOME/Library/Logs/DiagnosticReports" -name '*.ips' -newer "$GITHUB_EVENT_PATH" \
+            -exec cp {} "$IOS_OUT/crashes/" \; 2>/dev/null || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ios-simulator
+          path: ${{ runner.temp }}/ios-simulator
+          if-no-files-found: warn
+          retention-days: 14

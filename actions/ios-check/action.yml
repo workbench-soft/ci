@@ -1,0 +1,17 @@
+name: iOS check
+description: Lists the Android only pieces of an app with no iOS plan, and fails on one missing from ios-check.json.
+
+inputs:
+  app_dir:
+    description: The app folder, where package.json and ios-check.json sit.
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    # The script runs as TypeScript, so Node 22.18 or newer has to be on PATH, such as from actions/setup.
+    - shell: bash
+      env:
+        APP_DIR: ${{ inputs.app_dir }}
+        CHECK: ${{ github.action_path }}/../../scripts/ios-check.ts
+      run: node "$CHECK" "$APP_DIR"

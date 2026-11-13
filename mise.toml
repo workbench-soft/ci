@@ -1,4 +1,6 @@
 [tools]
+node = "24"
+pnpm = "11.22.0"
 actionlint = "1.7.12"
 "npm:markdownlint-cli2" = "0.24.0"
 "npm:oxfmt" = "0.75.0"
@@ -7,13 +9,15 @@ shellcheck = "0.11.0"
 shfmt = "3.14.1"
 
 [tasks.lint]
-description = "Check the workflows, the scripts and the format of every file"
+description = "Check the workflows, the scripts, the TypeScript and the format of every file"
 run = [
   "markdownlint-cli2",
   "actionlint",
   "sh -c 'shellcheck .github/scripts/*.sh'",
   "shfmt -i 2 -ci -d .github/scripts",
   "oxfmt --check",
+  "pnpm lint",
+  "pnpm typecheck",
 ]
 
 [tasks.format]
@@ -21,5 +25,9 @@ description = "Format the scripts and every other file"
 run = ["shfmt -i 2 -ci -w .github/scripts", "oxfmt"]
 
 [tasks.test]
-description = "Check the release scripts against a throwaway git repo"
-run = "sh .github/scripts/test-release.sh"
+description = "Check the release scripts against a throwaway git repo, and ios-check with Vitest"
+run = ["sh .github/scripts/test-release.sh", "pnpm test"]
+
+[tasks.ios-check]
+description = "List the Android only pieces of an app: mise run ios-check -- <app dir>"
+run = "node scripts/ios-check.ts"

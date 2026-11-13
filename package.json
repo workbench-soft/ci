@@ -1,0 +1,18 @@
+{
+  "name": "ci",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "oxlint": "^1.93.0",
+    "oxlint-tsgolint": "^7.0.2007",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  },
+  "packageManager": "pnpm@11.22.0"
+}
