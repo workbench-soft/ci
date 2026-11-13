@@ -86,6 +86,8 @@ jobs:
       - uses: workbench-soft/ci/actions/setup@main
         with:
           install_args: ${{ inputs.install_args }}
+          # An npm app has package-lock.json and installs in its web_build, such as "npm ci && npm run build".
+          pnpm-install: ${{ hashFiles(format('{0}/package-lock.json', inputs.app_dir)) == '' }}
       - name: Load the build env
         env:
           BUILD_ENV: ${{ secrets.build_env }}
@@ -105,7 +107,10 @@ jobs:
             expo) mise x -- pnpm exec expo prebuild --platform ios --no-install ;;
             capacitor)
               mise x -- bash -c "$WEB_BUILD"
-              if [ -d ios ]; then mise x -- pnpm exec cap sync ios; else mise x -- pnpm exec cap add ios; fi
+              # An npm app runs the Capacitor CLI through npm, a pnpm app through pnpm.
+              cli=(pnpm exec)
+              if [ -f package-lock.json ]; then cli=(npm exec --); fi
+              if [ -d ios ]; then mise x -- "${cli[@]}" cap sync ios; else mise x -- "${cli[@]}" cap add ios; fi
               ;;
             *) echo "::error::kind is $KIND, expected expo or capacitor"; exit 1 ;;
           esac
