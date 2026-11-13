@@ -90,3 +90,10 @@
 - **Steps** this spec, then the check with its tests, then the workflow and
   the docs.
 - **Docs** README, CHANGELOG, `docs/features.md`, `docs/architecture.md`.
+
+### 2026-11-14 npm apps in the simulator workflow
+
+- **Why** `consdr` keeps npm and `package-lock.json`, and the workflow ran `pnpm install` and `pnpm exec cap`, which fail with no `pnpm-lock.yaml`.
+- **Changes** `ios-simulator.yml` skips `pnpm install` when `app_dir` holds `package-lock.json`, and runs `cap` through `npm exec` there. The caller installs in `web_build`, such as `npm ci && npm run build`, with `install_args: node`.
+- **Steps** this entry with the workflow and the docs, in one PR.
+- **Docs** README, CHANGELOG.
