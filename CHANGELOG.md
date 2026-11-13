@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **iOS check** `scripts/ios-check.ts` lists the Expo modules, packages, Gradle libraries, Capacitor platforms and Kotlin wrappers of an app with no iOS side, and fails on one missing from the app's `ios-check.json`. App repos run it through a mise task and `actions/ios-check`.
+- **iOS simulator** the reusable `ios-simulator.yml` builds an Expo or Capacitor app for the iPhone simulator on macOS, launches it, runs its Maestro flows and uploads the `ios-simulator` artifact.
+- **TypeScript** the repo pins Node and pnpm. Lint runs oxlint and `tsc`, and test runs Vitest.
+
 - **Older runs stop on GitHub** a newer push to `main` cancels the Checks and the release build of the older commit through `concurrency`, with the local-ci page off too.
 
 - **Dependabot releases** a failed lookup of the workflow list stops the run before the merge, so the PR stays open in place of merging without its paired release.

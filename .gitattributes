@@ -2,3 +2,8 @@
 # The release scripts run in sh, which fails on CRLF ends.
 *.sh text eol=lf
 .githooks/* text eol=lf
+# Two branches that each add a line keep both on a merge.
+CHANGELOG.md merge=union
+TODO.md merge=union
+docs/features.md merge=union
+docs/user-flows.md merge=union

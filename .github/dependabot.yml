@@ -1,11 +1,18 @@
-# Each week Dependabot opens one PR with the action updates.
+# Each week Dependabot opens one PR with the action updates and one with the npm updates.
 version: 2
 
 updates:
   - package-ecosystem: github-actions
-    directories: [/, /actions/setup]
+    directories: [/, /actions/setup, /actions/ios-check]
     schedule:
       interval: weekly
     groups:
       actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
         patterns: ["*"]

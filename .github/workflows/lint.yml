@@ -32,7 +32,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The repo checks its own setup action, so a break shows here before it reaches the app repos.
       - uses: ./actions/setup
-        with:
-          pnpm-install: "false"
       - run: mise run lint
       - run: mise run test

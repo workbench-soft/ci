@@ -21,6 +21,22 @@ flowchart LR
   install --> steps
 ```
 
+## Build an app for the iPhone simulator
+
+1. A person or an agent starts the app's `ios.yml`, which calls `ios-simulator.yml`.
+2. The `ios-check` job runs `ios-check.ts`. A missing item stops the run.
+3. The macOS job makes the iOS project, installs the pods and builds for the simulator.
+4. A simulator boots, the app installs and launches, and `launch.png` is taken.
+5. Maestro runs the flows under `e2e/maestro/`.
+6. The `ios-simulator` artifact uploads, also after a failure.
+
+```mermaid
+flowchart LR
+  start["ios.yml by hand"] --> check["ios-check"] -->|pass| build["prebuild or cap sync, pods, xcodebuild"]
+  build --> sim["Boot, install, launch"] --> flows["Maestro flows"] --> art["ios-simulator artifact"]
+  check -->|missing item| stop["Run fails"]
+```
+
 ## Merge a Dependabot PR
 
 1. Dependabot opens or rebases a PR in the app repo.

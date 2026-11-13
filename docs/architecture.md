@@ -7,9 +7,12 @@ flowchart LR
   subgraph app["App repo"]
     job["Workflow job"] -->|uses| setup["actions/setup<br/>mise + pnpm"]
     pr["pull_request_target"] -->|calls| auto["dependabot-auto-merge.yml"]
+    ios["ios.yml, by hand"] -->|calls| sim["ios-simulator.yml"]
   end
   setup --> tools["Pinned tools from mise.toml"]
   auto --> gh["gh pr merge, gh workflow run"]
+  sim -->|first| check["actions/ios-check<br/>ios-check.ts"]
+  sim -->|macOS| xcode["xcodebuild, simulator, Maestro"]
   auto -.->|dispatches the paired| appRelease["Release of the app repo"]
   subgraph own["This repo"]
     push["Push to main"] --> lint["lint.yml"]
@@ -22,6 +25,8 @@ flowchart LR
 | ---------- | ----------------------------- | --------------------------------------------------------------- |
 | Setup      | GitHub composite action, mise | Same tools in every repo                                        |
 | Auto merge | Reusable workflow, `gh` CLI   | Merges Dependabot PRs                                           |
+| iOS check  | `ios-check.ts`, Node          | Lists Android only pieces with no iOS plan                      |
+| iOS build  | Reusable workflow, macOS      | Simulator build, Maestro flows, screenshots                     |
 | Lint       | `lint.yml`                    | Checks this repo's own files                                    |
 | Release    | `release.yml`, shell          | Tags each push to main that passes Lint and publishes its notes |
 | Test       | `test-release.sh`, sh and git | Checks the two release scripts in a throwaway repo              |
@@ -139,3 +144,22 @@ Two scripts share two formats, and `mise run test` keeps them in step.
   - **Semver tags** the callers read `@main` and skip the version
     number.
 - **Cost to undo** low. `release.yml` and its two scripts.
+
+### iOS check: a script here, run from the clone or the action
+
+- **Picked** `scripts/ios-check.ts` runs straight in Node 24, which strips the types. On the PC the app's mise task runs it from the `ci` clone. In CI `actions/ios-check` runs it from the action's own copy of this repo.
+- **Why** GitHub downloads the whole repo for a composite action, so the private repo needs no token and no extra checkout.
+- **Trade-off** the PC runs the clone's version, so a stale clone checks with an older list.
+- **Rejected**
+  - **An npm package** it needs a registry and a version bump per list change.
+  - **A checkout of this repo in the job** the job token of an app repo can't read another private repo.
+- **Cost to undo** low. One script and one action.
+
+### iOS build: a reusable workflow on GitHub macOS
+
+- **Picked** `ios-simulator.yml` runs on `macos-latest`, after `ios-check` passes on `CI_RUNNER`.
+- **Why** the PC runners are Windows, and a GitHub macOS runner is the only free Mac in reach.
+- **Trade-off** a macOS minute counts as 10, so callers start it by hand or on release.
+- **Rejected**
+  - **EAS Build** its free plan caps iOS builds, and Maestro still needs a Mac.
+- **Cost to undo** medium. Each caller's `ios.yml` changes.
