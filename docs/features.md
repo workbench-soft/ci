@@ -26,14 +26,6 @@ Spec: [ios-apps](../specs/ios-apps.md).
 
 Spec: [shared-workflows](../specs/shared-workflows.md).
 
-## Play bundle once a day
-
-- **What it gives** each Android app sends its newest release to Google Play at 19:00 Sydney time, and a push builds only the APK.
-- **Where** the app's `play.yml` calls `actions/play-gate`, builds the bundle of the tag it names, uploads it, then calls `actions/play-mark`.
-- **Limits** a release with no new tag since the last send builds nothing. A marker unused for 7 days goes, and Play then refuses the repeat upload once.
-
-Spec: [play-daily](../specs/play-daily.md).
-
 ## Releases
 
 - **What it gives** a tagged release such as `v2026.10.30.1` after a push to `main` passes `Lint`. Its notes list the commits since the release before.

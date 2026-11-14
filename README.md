@@ -10,8 +10,6 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 | `.github/workflows/dependabot-auto-merge.yml` | Merges a Dependabot PR as soon as it opens, then runs the checks on main. A major update waits for a person |
 | `.github/workflows/merge-dependabot.yml`      | Calls that workflow for this repo's own Dependabot PRs, then runs Lint on main                              |
 | `scripts/ios-check.ts`                        | Lists each Android only piece of an app with no iOS plan, and fails on one missing from `ios-check.json`    |
-| `actions/play-gate`                           | Finds the newest release Google Play lacks, at 19:00 Sydney time or on a run by hand                        |
-| `actions/play-mark`                           | Records a release as sent to Google Play, so `play-gate` skips it the next day                              |
 | `actions/ios-check`                           | Runs `ios-check.ts` in a job of the app repo                                                                |
 | `.github/workflows/ios-simulator.yml`         | Builds an Expo or Capacitor app for the iPhone simulator, runs its Maestro flows, uploads the screenshots   |
 
@@ -126,16 +124,3 @@ a repo can pin a tag in place of `@main`.
 ## Access
 
 This repo is private. Settings, Actions, General, Access is set to "Accessible from repositories in the organization". Without it, the other repos fail to load the workflows.
-
-The daily Play send, in the app's `play.yml`:
-
-```yaml
-on:
-  schedule: [{ cron: "0 8 * * *" }, { cron: "0 9 * * *" }] # 19:00 Sydney in summer, then in winter
-  workflow_dispatch:
-```
-
-A light job runs `play-gate` with the app's `tag-prefix` and
-`release-repo`. When its `tag` output is set, a heavy job checks out `sha`,
-builds the signed bundle of that version, uploads it to `PLAY_TRACK`, then
-runs `play-mark` with the tag.
