@@ -64,3 +64,12 @@ The app repos moved Release to `release-gate.sh`, which ties the build to Checks
 - **Store of the runners** copy alone failed in memories run 42686695102: `ERR_PNPM_EBUSY ... copyfile` from the shared store, whose files the old checkouts still link. The runners use `C:ci_pnpm-store`, beside the work folders. Its files get no other link, since every job copies. The action writes `pnpm_config_store_dir` and `pnpm_config_package_import_method` to `$GITHUB_ENV`, since pnpm in later steps refuses a store other than the install's.
 - **Old checkouts** a `node_modules` without the `.ci-store` marker still holds hardlinks. The action moves it to `_trash-<time>-node_modules-<repo>` beside the checkouts, where the job start hook of local-ci deletes it, and installs anew.
 - **Cost** a cold install copies about 1.4 GB for memories, in place of links, and the new store downloads each package once. A warm install checks the folder only, as before.
+
+## 2026-11-14 Dispatch the checks with a token that chains
+
+A Dependabot merge dispatched Checks with the workflow token. GitHub fires no `workflow_run` for a run that token starts, so a Release or Deploy web on `workflow_run` of Checks never followed: property-trends Checks for `2e20139` passed on 2026-11-11 with no Release after them.
+
+- **Token** `dependabot-auto-merge.yml` takes an optional `dispatch_token` secret and starts the listed workflows with it. A run started by that token fires `workflow_run`, so the follow-up workflows run.
+- **Secret** callers pass `CI_DISPATCH_TOKEN`, an org Dependabot secret, since a run Dependabot starts reads Dependabot secrets only. It is a fine-grained token on every repo of the org with Actions read and write. The merge still takes the workflow token.
+- **Fallback** without the secret the job dispatches with the workflow token, as before, and a warning names the gap.
+- **Dispatching Release instead** was dropped. Release run by hand looks up Checks once and fails while they run, and a Release the workflow token starts fires no Deploy web either.
