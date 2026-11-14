@@ -15,6 +15,10 @@ on:
         description: Merge a major update too
         type: boolean
         default: false
+    secrets:
+      dispatch_token:
+        description: Token that starts the workflows after the merge. Runs it starts fire workflow_run, so Release and Deploy web follow Checks
+        required: false
 
 defaults:
   run:
@@ -42,6 +46,7 @@ jobs:
           UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
           ALLOW_MAJOR: ${{ inputs.allow_major }}
           WORKFLOWS: ${{ inputs.workflows }}
+          DISPATCH_TOKEN: ${{ secrets.dispatch_token }}
         run: |
           if [ "$UPDATE_TYPE" = version-update:semver-major ] && [ "$ALLOW_MAJOR" != true ]; then
             echo "A major update waits for a person to merge it."
@@ -81,6 +86,12 @@ jobs:
           gh pr merge "$PR" --squash --delete-branch
 
           # Checks and their paired release builds start together on the merged branch.
+          # A run the workflow token starts fires no workflow_run, so a Release on workflow_run of Checks follows only
+          # when the dispatch token starts them.
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "::warning::No dispatch_token, so the workflows start with the workflow token and nothing on workflow_run follows them. Pass secrets.CI_DISPATCH_TOKEN."
+            DISPATCH_TOKEN=$GH_TOKEN
+          fi
           for workflow in $WORKFLOWS; do
-            gh workflow run "$workflow" --ref "$BASE"
+            GH_TOKEN=$DISPATCH_TOKEN gh workflow run "$workflow" --ref "$BASE"
           done

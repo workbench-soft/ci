@@ -43,9 +43,12 @@ jobs:
     with:
       workflows: checks.yml # run on main after the merge
       allow_major: false # optional
+    secrets:
+      dispatch_token: ${{ secrets.CI_DISPATCH_TOKEN }} # optional, lets Release follow Checks
 ```
 
 - **List the checks** a token merge starts no push run. The shared workflow also dispatches each push release workflow whose publication guard names one of those checks.
+- **Dispatch token** the org Dependabot secret `CI_DISPATCH_TOKEN` starts the listed workflows, so a Release or Deploy web on `workflow_run` follows them. Without it the workflow token starts them, and GitHub fires no `workflow_run` for such a run.
 - **`workflow_dispatch`** each file in `workflows` needs this trigger. Without it the run fails before the merge and names the file, and the PR stays open.
 
 ## iOS check and simulator build

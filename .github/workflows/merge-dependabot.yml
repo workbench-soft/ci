@@ -15,3 +15,5 @@ jobs:
     uses: ./.github/workflows/dependabot-auto-merge.yml
     with:
       workflows: lint.yml
+    secrets:
+      dispatch_token: ${{ secrets.CI_DISPATCH_TOKEN }}

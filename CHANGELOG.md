@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Release after Dependabot merges** the shared auto-merge takes a `dispatch_token` secret and starts the checks with it, so Release and Deploy web on `workflow_run` of Checks follow. Without it a warning names the gap.
 - **iOS simulator for npm apps** an app with `package-lock.json` skips `pnpm install` and runs Capacitor through `npm exec`.
 - **iOS check** `scripts/ios-check.ts` lists the Expo modules, packages, Gradle libraries, Capacitor platforms and Kotlin wrappers of an app with no iOS side, and fails on one missing from the app's `ios-check.json`. App repos run it through a mise task and `actions/ios-check`.
 - **iOS simulator** the reusable `ios-simulator.yml` builds an Expo or Capacitor app for the iPhone simulator on macOS, launches it, runs its Maestro flows and uploads the `ios-simulator` artifact.
