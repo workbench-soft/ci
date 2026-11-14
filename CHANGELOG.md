@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Play once a day** `actions/play-gate` finds the newest release Google Play lacks, at 19:00 Sydney time or on a run by hand, and `actions/play-mark` records the send. An app's `play.yml` builds the bundle in between, so a push builds only the APK.
 - **iOS simulator for npm apps** an app with `package-lock.json` skips `pnpm install` and runs Capacitor through `npm exec`.
 - **iOS check** `scripts/ios-check.ts` lists the Expo modules, packages, Gradle libraries, Capacitor platforms and Kotlin wrappers of an app with no iOS side, and fails on one missing from the app's `ios-check.json`. App repos run it through a mise task and `actions/ios-check`.
 - **iOS simulator** the reusable `ios-simulator.yml` builds an Expo or Capacitor app for the iPhone simulator on macOS, launches it, runs its Maestro flows and uploads the `ios-simulator` artifact.
