@@ -13,4 +13,4 @@
 
 ## dispatch-token
 
-- [ ] Open the log of the first `dependabot-auto-merge` run that merges a minor update after 2026-11-16, and check it has no `No dispatch_token` warning and a Release or Deploy run on `workflow_run` follows. All 19 callers pass `CI_DISPATCH_TOKEN`, and no minor Dependabot PR was open to test with (wait)
+- [ ] Open the log of the first `dependabot-auto-merge` run that merges a minor update after 2026-11-17 07:50, and check it has no `No dispatch_token` warning and a Release or Deploy run on `workflow_run` follows. All 19 callers hold `CI_DISPATCH_TOKEN` as a repo Dependabot secret since 2026-11-17, and `DISPATCH_TOKEN` showed empty on the 2026-11-16 runs, when only the org secret held it (wait)
