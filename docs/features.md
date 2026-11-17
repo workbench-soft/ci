@@ -10,6 +10,14 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 
 Spec: [shared-workflows](../specs/shared-workflows.md).
 
+## Affected step
+
+- **What it gives** CI of a repo runs the checks and the release of a product only when its files, or a package it depends on, changed. A docs push builds and ships no release.
+- **Where** a job adds `uses: workbench-soft/ci/actions/affected@main` and gates the others on its `run` output. Several products go in `.github/affected.json`.
+- **Limits** a build that reads a file outside its packages and `paths` misses a rebuild until that file joins `paths` or `global`. A lockfile change runs everything.
+
+Spec: [shared-workflows](../specs/shared-workflows.md).
+
 ## iOS check and simulator build
 
 - **What it gives** a list of each Android only piece of an app with no iOS plan, and an iPhone simulator build with screenshots of its Maestro flows.
@@ -29,7 +37,7 @@ Spec: [shared-workflows](../specs/shared-workflows.md).
 
 ## Releases
 
-- **What it gives** a tagged release such as `v2026.10.30.1` after a push to `main` passes `Lint`. Its notes list the commits since the release before.
+- **What it gives** a tagged release such as `v2026.10.30.1` after a push to `main` passes `Lint` and changes more than Markdown and docs since the last tag. Its notes list the commits since the release before.
 - **Where** the [Releases page](https://github.com/workbench-soft/ci/releases).
 - **Limits** notes only, with no files to download. Two releases that pick the same version side by side: the later one fails, and the next push ships its commits.
 

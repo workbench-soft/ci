@@ -1,0 +1,56 @@
+name: Affected
+description: Says whether a product of the repo changed since its last green run or its last release, so CI skips the jobs of an unchanged one.
+
+inputs:
+  since:
+    description: '"checks" compares with the last green run of this workflow on main, "release" with the last tag that matches tag.'
+    required: true
+  product:
+    description: A product of .github/affected.json. Empty means the whole repo.
+    default: ""
+  tag:
+    description: The tag pattern of the last release, such as desktop-v*. Empty takes the product's tag, else v*.
+    default: ""
+  token:
+    description: Reads the runs of the workflow. The job needs actions read.
+    default: ${{ github.token }}
+
+outputs:
+  run:
+    description: '"true" when the product changed since the base.'
+    value: ${{ steps.affected.outputs.run }}
+  all:
+    description: '"true" when the run counts as everything changed: a run by hand, no base, the lockfile or the tools.'
+    value: ${{ steps.affected.outputs.all }}
+  base:
+    description: The base commit, empty with all.
+    value: ${{ steps.affected.outputs.base }}
+  packages:
+    description: JSON list of the pnpm packages to check, the changed ones and those that depend on them.
+    value: ${{ steps.affected.outputs.packages }}
+  filter:
+    description: pnpm arguments that pick those packages, -r with all.
+    value: ${{ steps.affected.outputs.filter }}
+
+runs:
+  using: composite
+  steps:
+    # pnpm gives the package graph, so only a pnpm workspace installs it.
+    - id: tools
+      shell: bash
+      run: |
+        if [ -f pnpm-workspace.yaml ]; then echo "list=node pnpm" >> "$GITHUB_OUTPUT"; else echo "list=node" >> "$GITHUB_OUTPUT"; fi
+    - uses: workbench-soft/ci/actions/setup@main
+      with:
+        install_args: ${{ steps.tools.outputs.list }}
+        pnpm-install: "false"
+    # The script runs as TypeScript, so the repo pins Node 22.18 or newer.
+    - id: affected
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        SINCE: ${{ inputs.since }}
+        PRODUCT: ${{ inputs.product }}
+        TAG: ${{ inputs.tag }}
+        SCRIPT: ${{ github.action_path }}/../../scripts/affected.ts
+      run: mise x -- node "$SCRIPT" --since "$SINCE" --product "$PRODUCT" --tag "$TAG"

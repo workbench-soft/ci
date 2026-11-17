@@ -29,6 +29,7 @@ flowchart LR
 | iOS build  | Reusable workflow, macOS      | Simulator build, Maestro flows, screenshots                     |
 | Lint       | `lint.yml`                    | Checks this repo's own files                                    |
 | Release    | `release.yml`, shell          | Tags each push to main that passes Lint and publishes its notes |
+| Affected   | `affected.ts`, Node, pnpm     | Says which products a push changed, from git and the pnpm graph |
 | Test       | `test-release.sh`, sh and git | Checks the two release scripts in a throwaway repo              |
 
 ## Shared formats

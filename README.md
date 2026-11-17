@@ -4,14 +4,15 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 
 ## What is here
 
-| Path                                          | What it does                                                                                                |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `actions/setup`                               | Installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`, copying packages on Windows  |
-| `.github/workflows/dependabot-auto-merge.yml` | Merges a Dependabot PR as soon as it opens, then runs the checks on main. A major update waits for a person |
-| `.github/workflows/merge-dependabot.yml`      | Calls that workflow for this repo's own Dependabot PRs, then runs Lint on main                              |
-| `scripts/ios-check.ts`                        | Lists each Android only piece of an app with no iOS plan, and fails on one missing from `ios-check.json`    |
-| `actions/ios-check`                           | Runs `ios-check.ts` in a job of the app repo                                                                |
-| `.github/workflows/ios-simulator.yml`         | Builds an Expo or Capacitor app for the iPhone simulator, runs its Maestro flows, uploads the screenshots   |
+| Path                                          | What it does                                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `actions/setup`                               | Installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`, copying packages on Windows   |
+| `.github/workflows/dependabot-auto-merge.yml` | Merges a Dependabot PR as soon as it opens, then runs the checks on main. A major update waits for a person  |
+| `.github/workflows/merge-dependabot.yml`      | Calls that workflow for this repo's own Dependabot PRs, then runs Lint on main                               |
+| `scripts/ios-check.ts`                        | Lists each Android only piece of an app with no iOS plan, and fails on one missing from `ios-check.json`     |
+| `actions/affected`                            | Says whether a product changed since its last green run or release, so CI skips the jobs of an unchanged one |
+| `actions/ios-check`                           | Runs `ios-check.ts` in a job of the app repo                                                                 |
+| `.github/workflows/ios-simulator.yml`         | Builds an Expo or Capacitor app for the iPhone simulator, runs its Maestro flows, uploads the screenshots    |
 
 ## Use it in a repo
 
@@ -50,6 +51,34 @@ jobs:
 - **List the checks** a token merge starts no push run. The shared workflow also dispatches each push release workflow whose publication guard names one of those checks.
 - **Dispatch token** the Dependabot secret `CI_DISPATCH_TOKEN` of each calling repo starts the listed workflows, so a Release or Deploy web on `workflow_run` follows them. Without it the workflow token starts them, and GitHub fires no `workflow_run` for such a run.
 - **`workflow_dispatch`** each file in `workflows` needs this trigger. Without it the run fails before the merge and names the file, and the PR stays open.
+
+## Run only what changed
+
+`actions/affected` says whether a product of the repo changed since a base. A job of an unchanged product then skips. The plan sits in `specs/affected-ci.md` of the `workspace` repo.
+
+```yaml
+- uses: workbench-soft/ci/actions/affected@main
+  id: affected
+  with:
+    since: checks # or release
+    product: desktop # optional, a product of .github/affected.json
+```
+
+- **Base** `checks` compares with the newest green run of the same workflow on `main` under `HEAD`. `release` compares with the last tag that matches `tag`, default the product's `tag` or `v*`.
+- **Outputs** `run` is `true` when the product changed. `filter` holds the pnpm arguments for the changed packages and their dependents, such as `pnpm ${{ steps.affected.outputs.filter }} test`. `all` is `true` when everything counts as changed, and `filter` is then `-r`.
+- **Everything** a run by hand, no base, a change to `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the root `package.json`, `mise.toml`, `.github/actions/**` or the running workflow, and a file no package or product owns.
+- **Skipped** a file under `ignore`, by default `**/*.md` and `docs/**`.
+- **Job** the checkout needs `fetch-depth: 0`, and the job needs `actions: read` for `since: checks`.
+
+A repo with several products lists them in `.github/affected.json`. `packages` are pnpm names, `paths` are globs for files outside pnpm, and `global` and `ignore` replace the defaults:
+
+```json
+{
+  "products": {
+    "desktop": { "packages": ["media-organizer"], "paths": ["crates/**"], "tag": "desktop-v*" }
+  }
+}
+```
 
 ## iOS check and simulator build
 
