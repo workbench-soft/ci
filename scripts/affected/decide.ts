@@ -45,6 +45,11 @@ const hit = (file: string, globs: string[] | undefined) =>
   (globs ?? []).some((g) => posix.matchesGlob(file, g) || posix.matchesGlob(undot(file), g));
 const inside = (file: string, dir: string) => file.startsWith(`${dir}/`);
 
+// A workflow_run run keeps the newest commit of main as its head_sha, which can be newer than the commit it
+// checked out. Such a workflow names its commit in run-name, and a full SHA in the run's title wins.
+export const runCommit = (headSha: string, title: string) =>
+  title.match(/\b[0-9a-f]{40}\b/)?.[0] ?? headSha;
+
 export function productOf(config: Config, name: string): Product {
   if (!name) return {};
   const product = config.products?.[name];

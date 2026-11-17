@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Input, decide } from "./decide.ts";
+import { type Input, decide, runCommit } from "./decide.ts";
 
 const memories: Input["config"] = {
   products: {
@@ -116,5 +116,18 @@ describe("decide", () => {
 
   it("names a product missing from the config", () => {
     expect(() => run("web", ["a.ts"])).toThrow('no product "web"');
+  });
+});
+
+describe("runCommit", () => {
+  const head = "a".repeat(40);
+  const shipped = "0123456789abcdef0123456789abcdef01234567";
+
+  it("takes the commit a workflow_run run names in its title", () => {
+    expect(runCommit(head, `Deploy web ${shipped}`)).toBe(shipped);
+  });
+
+  it("keeps the head of a run whose title names no commit", () => {
+    expect(runCommit(head, "fix: a title with abc123 in it")).toBe(head);
   });
 });

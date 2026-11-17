@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { parseArgs } from "node:util";
-import { type Config, type Pkg, decide, productOf } from "./affected/decide.ts";
+import { type Config, type Pkg, decide, productOf, runCommit } from "./affected/decide.ts";
 
 const sh = (cmd: string, args: string[]) =>
   execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -37,10 +37,12 @@ function checksBase(workflowFile: string, head: string): [string | null, string]
     "api",
     `repos/${repo}/actions/workflows/${file}/runs?branch=main&status=success&per_page=30`,
     "--jq",
-    ".workflow_runs[].head_sha",
+    ".workflow_runs[] | [.head_sha, .display_title] | @tsv",
   ]);
   if (shas === null) return [null, `the runs of ${file} could not be read, so every check runs`];
-  for (const sha of shas.split("\n").filter(Boolean)) {
+  for (const line of shas.split("\n").filter(Boolean)) {
+    const [headSha = "", title = ""] = line.split("\t");
+    const sha = runCommit(headSha, title);
     if (sha === head) return [sha, `${head} passed ${file} already`];
     if (ancestor(sha)) return [sha, ""];
   }

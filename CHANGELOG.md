@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Affected after workflow_run** a deploy that starts when Checks end compares with the commit its last green run shipped, read from its `run-name`, in place of the newer `main` head GitHub records for such a run.
 - **Affected step** `actions/affected` tells a workflow whether a product changed since its last green run or release, from the diff and the pnpm package graph, so an unchanged product skips its checks and its release. This repo cuts no release for a push that changes only Markdown and docs.
 - **Release after Dependabot merges** the shared auto-merge takes a `dispatch_token` secret and starts the checks with it, so Release and Deploy web on `workflow_run` of Checks follow. Without it a warning names the gap.
 - **iOS simulator for npm apps** an app with `package-lock.json` skips `pnpm install` and runs Capacitor through `npm exec`.
