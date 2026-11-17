@@ -24,7 +24,8 @@ permissions:
 
 jobs:
   actionlint:
-    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
+    # The repo is public, so a GitHub runner costs 0 minutes, and the PC runner group serves private repos only.
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash

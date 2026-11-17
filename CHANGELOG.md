@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Public** the repo is public, so public repos of the org load `actions/affected` and `actions/setup` too. Lint and Release run on `ubuntu-latest`, since the PC runner group serves private repos only.
 - **Affected after workflow_run** a deploy that starts when Checks end compares with the commit its last green run shipped, read from its `run-name`, in place of the newer `main` head GitHub records for such a run.
 - **Product map** a change to `.github/affected.json` counts as a change to every product. It read as "belongs to no package or product" before, and a product with `.github/**` in its paths took it alone.
 - **Affected step** `actions/affected` tells a workflow whether a product changed since its last green run or release, from the diff and the pnpm package graph, so an unchanged product skips its checks and its release. This repo cuts no release for a push that changes only Markdown and docs.

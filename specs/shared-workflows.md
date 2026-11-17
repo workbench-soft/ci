@@ -8,7 +8,7 @@ The app repos copied the same CI steps by hand, and the copies drifted. This rep
 - **Dependabot metadata** `dependabot-metadata.yml` stores the update type of a Dependabot PR.
 - **Dependabot auto-merge** `dependabot-auto-merge.yml` merges a Dependabot PR once its checks pass, and leaves a major update for a person.
 - **Version** app repos call `@main`, so a merge here reaches each repo on its next run.
-- **Access** this repo is private. Settings, Actions, Access is set to the organization, so the other private repos can call it.
+- **Access** this repo is public since 2026-11-18, so the public repos of the org can load `actions/affected` too. A private repo shares actions with private repos only: a public repo failed with "Unable to resolve action workbench-soft/ci, not found".
 - **Left per repo** the app checks and the release jobs. Their steps differ by stack.
 
 ## 2026-10-30 Merge Dependabot PRs on open

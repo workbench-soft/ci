@@ -35,8 +35,8 @@ jobs:
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
       contains(fromJSON('["push","workflow_dispatch"]'), github.event.workflow_run.event))
-    # The local-ci page points CI_RUNNER at a cloud runner while free minutes last, else at the PC.
-    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
+    # The repo is public, so a GitHub runner costs 0 minutes, and the PC runner group serves private repos only.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
