@@ -73,3 +73,14 @@ A Dependabot merge dispatched Checks with the workflow token. GitHub fires no `w
 - **Secret** callers pass `CI_DISPATCH_TOKEN`, a Dependabot secret in each calling repo, since a run Dependabot starts reads Dependabot secrets only. It is a fine-grained token on every repo of the org with Actions read and write. The merge still takes the workflow token. An org secret reaches no private repo on the Free plan, so the merge runs of 2026-11-16 got an empty token.
 - **Fallback** without the secret the job dispatches with the workflow token, as before, and a warning names the gap.
 - **Dispatching Release instead** was dropped. Release run by hand looks up Checks once and fails while they run, and a Release the workflow token starts fires no Deploy web either.
+
+## 2026-11-17 Affected: run only what a push changed
+
+A docs push still cut a release, and a change to one package of memories started the checks and the release of each app. The plan for every repo sits in `specs/affected-ci.md` of the `workspace` repo.
+
+- **Step** `actions/affected` runs `scripts/affected.ts`, which says whether a product of the repo changed since a base. It writes `run`, `all`, `base`, `packages` and `filter` as step outputs, and the reason to the job summary.
+- **Base** `since: checks` takes the newest green run of the same workflow on `main` whose commit is an ancestor of `HEAD`, so commits of a cancelled run still count. `since: release` takes the last tag that matches `tag`.
+- **Graph** in a pnpm workspace, `pnpm list -r --filter "...[<base>]"` gives each changed package and each package that depends on it.
+- **Safe side** a run by hand, no base, a change to the lockfile, `mise.toml`, the root `package.json`, `.github/actions/**` or the running workflow, and a file that no package or product owns each give `all=true`.
+- **Config** a repo with several products lists them in `.github/affected.json`, each with `packages`, `paths` and `tag`. A repo with one product needs none.
+- **Own release** `release.yml` of this repo runs the step with `since: release`, so a push with no change outside Markdown since the last tag cuts no release.
