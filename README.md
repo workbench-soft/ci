@@ -156,4 +156,4 @@ a repo can pin a tag in place of `@main`.
 
 ## Access
 
-This repo is private. Settings, Actions, General, Access is set to "Accessible from repositories in the organization". Without it, the other repos fail to load the workflows.
+This repo is public, so public repos of the org load its actions too. GitHub shares actions of a private repo with private repos only. Its own jobs run on GitHub runners, since the PC runner group serves private repos only, and its repo variable `CI_RUNNER` is `["ubuntu-latest"]` for the Dependabot merge it calls.

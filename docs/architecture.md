@@ -120,17 +120,20 @@ Two scripts share two formats, and `mise run test` keeps them in step.
   - **Any actor on a Dependabot branch** it let the unreviewed commit in.
 - **Cost to undo** low. The `if:` line of the job.
 
-### Access: a private repo open to the org
+### Access: a public repo
 
-- **Picked** the repo is private. Settings, Actions, Access is set to the
-  organization.
-- **Why** the org rule keeps its repos private, and the callers are private
-  too.
-- **Trade-off** the setting must stay on, or every caller fails to load the
-  workflows.
+- **Picked** the repo is public since 2026-11-18. Its own Lint and Release
+  run on `ubuntu-latest`.
+- **Why** GitHub shares actions of a private repo with private repos only, so
+  agent-skills, gh-review-notify, git-aliases and vscode-open-in-github
+  couldn't load `actions/affected`. The repo holds secret names, no values.
+- **Trade-off** the org's CI setup is public, and the PC runner group refuses
+  public repos, so the repo's own jobs use GitHub runners.
 - **Rejected**
-  - **A public repo** it would publish the org's CI setup for no gain.
-- **Cost to undo** low. One setting.
+  - **Private, open to the org** the public repos fail to load the actions.
+  - **A second public repo for the actions** two places to keep in step.
+  - **A copy of the step in each public repo** the copies drift.
+- **Cost to undo** low. One setting, and the two `runs-on` lines.
 
 ### Releases: a date tag after each green Lint
 
