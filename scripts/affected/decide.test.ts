@@ -91,6 +91,14 @@ describe("decide", () => {
     expect(run("mobile", ["mise.toml"]).all).toBe(true);
   });
 
+  it("counts a change to the product map as everything, with that reason", () => {
+    const config = { products: { site: { paths: [".github/**"] } } };
+    expect(run("site", [".github/affected.json"], [], { config })).toMatchObject({
+      all: true,
+      reasons: [".github/affected.json reaches every package"],
+    });
+  });
+
   it("counts a file no package or product owns as everything", () => {
     expect(run("desktop", ["tsconfig.base.json"])).toMatchObject({ all: true });
   });

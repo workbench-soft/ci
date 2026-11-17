@@ -12,6 +12,8 @@ export const DEFAULT_GLOBAL = [
   "package.json",
   "mise.toml",
   ".github/actions/**",
+  // The product map itself: a change to it can move any file to another product.
+  ".github/affected.json",
 ];
 
 export type Input = {

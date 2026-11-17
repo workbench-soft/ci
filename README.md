@@ -66,7 +66,7 @@ jobs:
 
 - **Base** `checks` compares with the newest green run of the same workflow on `main` under `HEAD`. `release` compares with the last tag that matches `tag`, default the product's `tag` or `v*`.
 - **Outputs** `run` is `true` when the product changed. `filter` holds the pnpm arguments for the changed packages and their dependents, such as `pnpm ${{ steps.affected.outputs.filter }} test`. `all` is `true` when everything counts as changed, and `filter` is then `-r`.
-- **Everything** a run by hand, no base, a change to `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the root `package.json`, `mise.toml`, `.github/actions/**` or the running workflow, and a file no package or product owns.
+- **Everything** a run by hand, no base, a change to `pnpm-lock.yaml`, `pnpm-workspace.yaml`, the root `package.json`, `mise.toml`, `.github/actions/**`, `.github/affected.json` or the running workflow, and a file no package or product owns.
 - **Skipped** a file under `ignore`, by default `**/*.md` and `docs/**`.
 - **Job** the checkout needs `fetch-depth: 0`, and the job needs `actions: read` for `since: checks`.
 - **workflow_run** such a run keeps the newest commit of `main` as its own commit. A workflow on `workflow_run` with `since: checks` MUST name the commit it checks out in `run-name`, such as `run-name: Deploy web ${{ github.event.workflow_run.head_sha || github.sha }}`, and the step reads it from there.
