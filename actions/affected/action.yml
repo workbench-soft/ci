@@ -44,7 +44,7 @@ runs:
       with:
         install_args: ${{ steps.tools.outputs.list }}
         pnpm-install: "false"
-    # The script runs as TypeScript, so the repo pins Node 22.18 or newer.
+    # The script runs as TypeScript. mise x node takes the repo's Node pin, or the newest Node in a repo that pins none, such as a Rust repo.
     - id: affected
       shell: bash
       env:
@@ -53,4 +53,4 @@ runs:
         PRODUCT: ${{ inputs.product }}
         TAG: ${{ inputs.tag }}
         SCRIPT: ${{ github.action_path }}/../../scripts/affected.ts
-      run: mise x -- node "$SCRIPT" --since "$SINCE" --product "$PRODUCT" --tag "$TAG"
+      run: mise x node -- node "$SCRIPT" --since "$SINCE" --product "$PRODUCT" --tag "$TAG"
