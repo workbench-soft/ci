@@ -16,7 +16,7 @@ runs:
     # $GITHUB_ENV carries the job's own shim folder to every later step, the caller's steps too.
     - shell: bash
       run: echo "MISE_SHIMS_DIR=$RUNNER_TEMP/mise-shims" >> "$GITHUB_ENV"
-    - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+    - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
       with:
         # The tools stay on the dev machine between runs. A cache would upload them to GitHub on each run.
         cache: false
