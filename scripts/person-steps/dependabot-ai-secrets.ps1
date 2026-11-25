@@ -41,7 +41,9 @@ done
 $env:REPOS = $repos -join ' '
 $script = Join-Path $env:TEMP 'dependabot-ai-secrets.sh'
 [IO.File]::WriteAllText($script, $set.Replace("`r", ''))
-mise x -- bws run --project-id $project -- "$env:ProgramFiles\Git\bin\bash.exe" $script
+# bws run hands the command to PowerShell as one line, so a path with a space needs quotes and the call operator.
+$bash = "$env:ProgramFiles\Git\bin\bash.exe"
+mise x -- bws run --shell powershell --project-id $project -- "& '$bash' '$script'"
 if ($LASTEXITCODE -ne 0) { throw 'Setting the repo secrets failed.' }
 Remove-Item $script
 Write-Host 'Done: the Claude token is in Bitwarden, and each repo has both secrets.'

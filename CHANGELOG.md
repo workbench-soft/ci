@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Secrets script** `dependabot-ai-secrets.ps1` quotes the Git Bash path for `bws run`, which failed on the space in `Program Files`.
 - **Dependabot waits for green** the shared auto-merge runs the checks on the Dependabot branch and merges once they pass, so a bad update stays off `main`. Claude Code on the PC runner fixes a red branch, 2 tries at most, then the PR gets `needs-person`. Claude also writes at the top of each PR what gets better, what can break and where the repo uses the package. Callers add a `workflow_run` trigger and an Actions secret `CI_DISPATCH_TOKEN`.
 - **Repos without Node** `actions/affected` runs its script through `mise x node`, so a repo that pins no Node, such as a Rust repo, gets the newest Node in place of the runner's older one or a mise error.
 - **Public** the repo is public, so public repos of the org load `actions/affected` and `actions/setup` too. Lint and Release run on `ubuntu-latest`, since the PC runner group serves private repos only.
