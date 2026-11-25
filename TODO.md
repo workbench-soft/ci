@@ -2,7 +2,7 @@
 
 ## dependabot-smart-merge
 
-- [ ] Put the Claude token and the dispatch token into each calling repo (login, denied): `powershell -NoProfile -ExecutionPolicy Bypass -File "$env:WBS_ROOT\ci\scripts\person-steps\dependabot-ai-secrets.ps1"`. It opens a Claude sign-in once and asks for the token it prints.
+- Left: read the first live Dependabot PR run of the new flow: checks on the branch, the merge, the notes in the body (wait)
 
 ## app-audit
 
