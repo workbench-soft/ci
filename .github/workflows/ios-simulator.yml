@@ -235,12 +235,12 @@ jobs:
           if ! alive; then
             echo "::error::$bundle stopped within 20 seconds of launch"
             # The artifact can fail to upload, so the log carries each crash by process, then the app's own,
-            # then the app process's errors: App for Capacitor, the app name for Expo.
+            # then the app process's errors with the lines after them, which hold a JS error's component stack.
             find "$HOME/Library/Logs/DiagnosticReports" -name "*.ips" -newer "$GITHUB_EVENT_PATH" \
               -exec head -n 1 {} \; | jq -r '"crash: \(.app_name) \(.bundleID // "")"' 2>/dev/null || true
             report=$(grep -l "\"bundleID\":\"$bundle\"" "$HOME"/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -n 1 || true)
             if [ -n "$report" ]; then tail -n +2 "$report" | jq -r "(.exception // {} | tostring), (.termination // {} | tostring), (.asi // {} | tostring), ((.threads // [])[] | select(.triggered) | .frames[:25][] | \"\(.imageIndex) \(.symbol // \"?\")\")" 2>/dev/null || head -c 4000 "$report"; fi
-            xcrun simctl spawn "$SIM_UDID" log show --last 1m --style compact --predicate "process == \"$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")\"" 2>/dev/null | grep -iE "fatal|exception|terminat|error" | tail -n 30 || true
+            xcrun simctl spawn "$SIM_UDID" log show --last 1m --style compact --predicate "process == \"$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")\"" 2>/dev/null | grep -iE -A 30 "fatal|exception|terminat|error" | tail -n 120 || true
             exit 1
           fi
       - name: Run the Maestro flows
