@@ -105,3 +105,9 @@
 - **Signing** manual on the app target, since automatic signing needs a development profile and the team has no registered device. A command line setting would also reach the Swift packages.
 - **Steps** this entry with the workflow, the action, the scripts and the docs, pushed to `main`.
 - **Docs** README, CHANGELOG, `docs/architecture.md`, `docs/features.md`.
+
+### 2026-11-26 purchase review screenshots from the flows
+
+- **Why** an in-app purchase stays `MISSING_METADATA` until it has an App Review screenshot of the app selling it. A web build sells nothing, and the org artifact storage is full, so a Maestro screenshot can't leave CI as an artifact.
+- **Changes** `ios-simulator.yml` takes `iap_review_shots`, such as `keeppad_remove_ads=record-02-cancelled.png keeppad_pro=settings-02-pro.png`. After the flows, `actions/iap-review-shots` runs `scripts/iap-review-shots.ts`, which uploads each screenshot to its purchase through the API. A purchase that has a shot keeps it.
+- **Docs** README, CHANGELOG, `docs/features.md`.

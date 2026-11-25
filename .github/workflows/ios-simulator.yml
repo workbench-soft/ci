@@ -49,6 +49,10 @@ on:
         description: The version the App Store record carries, such as 1.0. Empty keeps the project's.
         type: string
         default: ""
+      iap_review_shots:
+        description: Space separated product=screenshot pairs. Each in-app purchase gets that Maestro screenshot for App Review. Needs the ASC secrets.
+        type: string
+        default: ""
     secrets:
       build_env:
         description: KEY=value lines the build reads, such as EXPO_PUBLIC_FIREBASE_API_KEY. Each value gets masked.
@@ -270,6 +274,18 @@ jobs:
               grep -v '^$' | sort -u | head -n 80 || true
           fi
           exit "$status"
+      # A purchase needs a picture of the app selling it before App Review takes it. CI artifacts can be full, so the
+      # flows' own screenshots go straight to App Store Connect.
+      - name: Upload the purchase review screenshots
+        if: inputs.iap_review_shots != ''
+        uses: workbench-soft/ci/actions/iap-review-shots@main
+        with:
+          bundle_id: ${{ env.APP_ID }}
+          shots_dir: ${{ env.IOS_OUT }}/maestro
+          shots: ${{ inputs.iap_review_shots }}
+          asc_key_p8: ${{ secrets.ASC_API_KEY_P8 }}
+          asc_key_id: ${{ secrets.ASC_API_KEY_ID }}
+          asc_issuer_id: ${{ secrets.ASC_API_ISSUER_ID }}
       # Runs only once the build launched and the flows passed, so a crash never reaches App Store Connect.
       - name: Upload to App Store Connect
         if: inputs.upload
