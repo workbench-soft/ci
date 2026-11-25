@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Launch log of Expo apps** a stopped app prints the errors of its own process, read from `CFBundleExecutable`, in place of a process named App, which only Capacitor apps have.
 - **Root privacy manifest** the simulator job also fails when the app's own `PrivacyInfo.xcprivacy` has `NSPrivacyTracking` true with no tracking domains, the ITMS-91064 cause of the first five App Store builds.
 - **Expo App Store upload** `actions/ios-upload` takes the `.xcworkspace` of a CocoaPods app, such as Expo, and writes the build number and version into an `Info.plist` that holds them as text.
 - **Privacy manifest check** the simulator job fails when a `PrivacyInfo.xcprivacy` in the app lists tracking domains without `NSPrivacyTracking` true, which App Store Connect rejects as ITMS-91064, and prints each manifest it finds.
