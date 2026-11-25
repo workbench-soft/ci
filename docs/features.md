@@ -22,7 +22,8 @@ Spec: [shared-workflows](../specs/shared-workflows.md).
 
 - **What it gives** a list of each Android only piece of an app with no iOS plan, and an iPhone simulator build with screenshots of its Maestro flows.
 - **Where** the `ios-check` mise task of an app repo, `actions/ios-check`, and `ios-simulator.yml` called from the app's `ios.yml`.
-- **Limits** the check reads fixed paths of the app folder. The simulator has no camera or real sensors, and each run costs macOS minutes, counted 10 times.
+- **Limits** the check reads fixed paths of the app folder. The simulator has no camera or real sensors, and the `ios-vm` runner takes one job at a time.
+- **Upload** `upload: true` sends a signed build to App Store Connect once the flows pass.
 
 Spec: [ios-apps](../specs/ios-apps.md).
 

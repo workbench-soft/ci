@@ -1,0 +1,133 @@
+name: iOS upload
+description: Archives a signed App Store build of an Xcode project and uploads it to App Store Connect with the API key.
+
+inputs:
+  project:
+    description: The .xcodeproj, relative to the working directory.
+    required: true
+  scheme:
+    description: The Xcode scheme.
+    required: true
+  bundle_id:
+    description: The app's bundle id. Empty reads it from the project's Release settings.
+    default: ""
+  team:
+    description: The Apple team id.
+    default: T32B8X7FJ3
+  marketing_version:
+    description: CFBundleShortVersionString, such as 1.0. Empty keeps the project's MARKETING_VERSION.
+    default: ""
+  asc_key_p8:
+    description: The App Store Connect API key, the text of the .p8 file.
+    required: true
+  asc_key_id:
+    description: The API key id.
+    required: true
+  asc_issuer_id:
+    description: The API issuer id.
+    required: true
+  dist_cert_p12_base64:
+    description: The team's Apple Distribution certificate with its private key, as base64 of the .p12.
+    required: true
+  dist_cert_password:
+    description: The .p12 password.
+    required: true
+
+outputs:
+  build_number:
+    description: The CFBundleVersion of the uploaded build.
+    value: ${{ steps.archive.outputs.build_number }}
+
+runs:
+  using: composite
+  steps:
+    - name: Sign, archive and upload
+      id: archive
+      shell: bash
+      env:
+        PROJECT: ${{ inputs.project }}
+        SCHEME: ${{ inputs.scheme }}
+        BUNDLE_ID: ${{ inputs.bundle_id }}
+        TEAM: ${{ inputs.team }}
+        MARKETING: ${{ inputs.marketing_version }}
+        ASC_API_KEY_P8: ${{ inputs.asc_key_p8 }}
+        ASC_API_KEY_ID: ${{ inputs.asc_key_id }}
+        ASC_API_ISSUER_ID: ${{ inputs.asc_issuer_id }}
+        P12: ${{ inputs.dist_cert_p12_base64 }}
+        P12_PASSWORD: ${{ inputs.dist_cert_password }}
+        SCRIPTS: ${{ github.action_path }}/../../scripts
+      run: |
+        set -euo pipefail
+        for v in ASC_API_KEY_P8 ASC_API_KEY_ID ASC_API_ISSUER_ID P12 P12_PASSWORD; do
+          if [ -z "${!v}" ]; then echo "::error::$v is empty. Store it through rotate-secrets -FromVault."; exit 1; fi
+        done
+        work="$RUNNER_TEMP/ios-upload"
+        rm -rf "$work" && mkdir -p "$work"
+        echo "IOS_UPLOAD_WORK=$work" >> "$GITHUB_ENV"
+        if [ -z "$BUNDLE_ID" ]; then
+          BUNDLE_ID=$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -showBuildSettings 2>/dev/null |
+            awk -F' = ' '/ PRODUCT_BUNDLE_IDENTIFIER = / { print $2; exit }')
+        fi
+        echo "Bundle $BUNDLE_ID"
+
+        # A keychain of this run only holds the certificate, and the cleanup step deletes it.
+        keychain="$work/signing.keychain-db"
+        pass=$(uuidgen)
+        echo "IOS_UPLOAD_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+        printf '%s' "$P12" | base64 --decode > "$work/dist.p12"
+        security create-keychain -p "$pass" "$keychain"
+        security set-keychain-settings -lut 3600 "$keychain"
+        security unlock-keychain -p "$pass" "$keychain"
+        security import "$work/dist.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$pass" "$keychain" > /dev/null
+        # shellcheck disable=SC2046
+        security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+        # Xcode 16 and newer read profiles from UserData, older ones from MobileDevice.
+        profiles="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+        profile=$(node "$SCRIPTS/ios-profile.ts" "$BUNDLE_ID" "$profiles")
+        mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+        cp "$profiles"/*.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/"
+        node "$SCRIPTS/ios-sign-project.ts" "$PROJECT/project.pbxproj" "$BUNDLE_ID" "$TEAM" "$profile"
+
+        # Each upload needs a higher build number, and the date and time of the run give one.
+        build=$(date -u +%y%m%d%H%M)
+        echo "build_number=$build" >> "$GITHUB_OUTPUT"
+        extra=()
+        if [ -n "$MARKETING" ]; then extra+=("MARKETING_VERSION=$MARKETING"); fi
+        status=0
+        xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
+          -destination 'generic/platform=iOS' -archivePath "$work/App.xcarchive" \
+          OTHER_CODE_SIGN_FLAGS="--keychain $keychain" CURRENT_PROJECT_VERSION="$build" ${extra[@]+"${extra[@]}"} \
+          archive > "$work/archive.log" 2>&1 || status=$?
+        tail -n 40 "$work/archive.log"
+        if [ "$status" -ne 0 ]; then grep -E 'error:' "$work/archive.log" | head -n 20 || true; exit "$status"; fi
+
+        cat > "$work/export.plist" <<PLIST
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+          <key>method</key><string>app-store-connect</string>
+          <key>teamID</key><string>$TEAM</string>
+          <key>signingStyle</key><string>manual</string>
+          <key>signingCertificate</key><string>Apple Distribution</string>
+          <key>provisioningProfiles</key><dict><key>$BUNDLE_ID</key><string>$profile</string></dict>
+          <key>uploadSymbols</key><true/>
+        </dict></plist>
+        PLIST
+        xcodebuild -exportArchive -archivePath "$work/App.xcarchive" -exportPath "$work/export" \
+          -exportOptionsPlist "$work/export.plist"
+        ipa=$(find "$work/export" -maxdepth 1 -name '*.ipa' | head -n 1)
+
+        # altool finds the key by its id in this folder, and the cleanup step removes it.
+        mkdir -p "$HOME/.appstoreconnect/private_keys"
+        printf '%s\n' "$ASC_API_KEY_P8" > "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_API_KEY_ID.p8"
+        xcrun altool --upload-app -f "$ipa" -t ios --apiKey "$ASC_API_KEY_ID" --apiIssuer "$ASC_API_ISSUER_ID" --output-format normal
+        echo "Uploaded $BUNDLE_ID build $build. App Store Connect lists it once processing ends."
+    - name: Remove the key and the keychain
+      if: always()
+      shell: bash
+      run: |
+        rm -f "$HOME"/.appstoreconnect/private_keys/AuthKey_*.p8
+        if [ -n "${IOS_UPLOAD_KEYCHAIN:-}" ]; then security delete-keychain "$IOS_UPLOAD_KEYCHAIN" 2>/dev/null || true; fi
+        if [ -n "${IOS_UPLOAD_WORK:-}" ]; then rm -rf "$IOS_UPLOAD_WORK"; fi

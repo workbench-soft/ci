@@ -27,7 +27,7 @@ flowchart LR
 | Setup      | GitHub composite action, mise | Same tools in every repo                                        |
 | Auto merge | Reusable workflow, `gh` CLI   | Tests, fixes and merges Dependabot PRs                          |
 | iOS check  | `ios-check.ts`, Node          | Lists Android only pieces with no iOS plan                      |
-| iOS build  | Reusable workflow, macOS      | Simulator build, Maestro flows, screenshots                     |
+| iOS build  | Reusable workflow, ios-vm     | Simulator build, Maestro flows, screenshots                     |
 | Lint       | `lint.yml`                    | Checks this repo's own files                                    |
 | Release    | `release.yml`, shell          | Tags each push to main that passes Lint and publishes its notes |
 | Affected   | `affected.ts`, Node, pnpm     | Says which products a push changed, from git and the pnpm graph |
@@ -162,11 +162,12 @@ Two scripts share two formats, and `mise run test` keeps them in step.
   - **A checkout of this repo in the job** the job token of an app repo can't read another private repo.
 - **Cost to undo** low. One script and one action.
 
-### iOS build: a reusable workflow on GitHub macOS
+### iOS build: a reusable workflow on the ios-vm runner
 
-- **Picked** `ios-simulator.yml` runs on `macos-latest`, after `ios-check` passes on `CI_RUNNER`.
-- **Why** the PC runners are Windows, and a GitHub macOS runner is the only free Mac in reach.
-- **Trade-off** a macOS minute counts as 10, so callers start it by hand or on release.
+- **Picked** `ios-simulator.yml` runs on `[self-hosted, ios-vm]`, a Tart macOS VM on the owner's work Mac, after `ios-check` passes on `CI_RUNNER`. With `upload: true` it also signs and uploads to App Store Connect through `actions/ios-upload`.
+- **Why** the PC runners are Windows, and a GitHub macOS minute counts as 10 on a private repo.
+- **Trade-off** one VM runs one job at a time, and the work Mac has to be on. `CI_IOS_RUNNER` moves the job back to `macos-latest`.
+- **Signing** manual signing on the app target with a profile from the API. Automatic signing needs a development profile for the archive, and the team has no registered device.
 - **Rejected**
   - **EAS Build** its free plan caps iOS builds, and Maestro still needs a Mac.
 - **Cost to undo** medium. Each caller's `ios.yml` changes.

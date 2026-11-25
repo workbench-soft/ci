@@ -106,7 +106,7 @@ Each item prints as `missing` or `allowed`. An item the app hides on iOS on purp
 { "allow": { "package:expo-intent-launcher": "every call sits behind Platform.OS === 'android'" } }
 ```
 
-The app repo's `.github/workflows/ios.yml` calls the build. A macOS minute counts as 10, so it runs by hand:
+The app repo's `.github/workflows/ios.yml` calls the build. It runs by hand, on the `ios-vm` runner:
 
 ```yaml
 name: iOS simulator
@@ -130,6 +130,8 @@ jobs:
 - **npm apps** an app with `package-lock.json` skips `pnpm install` and runs `cap` through `npm exec`. It passes `install_args: node` and installs in `web_build`, such as `npm ci && npm run build`.
 - **Build** `expo prebuild --platform ios`, or the web build with `cap sync ios`, then `pod install` and `xcodebuild` in Release for `iphonesimulator` with signing off.
 - **Run** an iPhone simulator of the newest iOS boots, the app launches for `launch.png`, and Maestro `cli-2.12.1` runs each flow under `e2e/maestro/`.
+- **Runner** the job runs on `[self-hosted, ios-vm]`, a Tart VM with Xcode on the owner's work Mac, at no GitHub minutes. A repo variable `CI_IOS_RUNNER` set to `["macos-latest"]` moves it to GitHub, where a minute counts as 10.
+- **Upload** with `upload: true` and the five secrets `ASC_API_KEY_P8`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`, `APPLE_DIST_CERT_P12_BASE64` and `APPLE_DIST_CERT_PASSWORD`, the job archives a signed App Store build once the flows pass and uploads it with `altool`. `actions/ios-upload` finds or makes the profile `<bundle id> App Store CI` on the team's distribution certificate, sets manual signing on the app target alone, and takes the date and time as the build number. `marketing_version` sets the version string. It needs `workspace` set to the `.xcodeproj`.
 - **Artifact** `ios-simulator` holds the screenshots, the Maestro report and debug output, crash reports and the last 300 lines of the xcodebuild log. `gh run download <run> -n ios-simulator` fetches it.
 - **Another workflow** `uses: workbench-soft/ci/actions/ios-check@main` with `app_dir` runs the check alone, after `actions/setup` puts Node 24 on PATH.
 

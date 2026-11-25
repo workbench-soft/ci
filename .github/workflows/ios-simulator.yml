@@ -37,9 +37,27 @@ on:
         description: A simulator name such as "iPhone 17". Empty takes an iPhone of the newest iOS.
         type: string
         default: ""
+      upload:
+        description: Once the flows pass, archive a signed App Store build and upload it to App Store Connect.
+        type: boolean
+        default: false
+      marketing_version:
+        description: The version the App Store record carries, such as 1.0. Empty keeps the project's.
+        type: string
+        default: ""
     secrets:
       build_env:
         description: KEY=value lines the build reads, such as EXPO_PUBLIC_FIREBASE_API_KEY. Each value gets masked.
+        required: false
+      ASC_API_KEY_P8:
+        required: false
+      ASC_API_KEY_ID:
+        required: false
+      ASC_API_ISSUER_ID:
+        required: false
+      APPLE_DIST_CERT_P12_BASE64:
+        required: false
+      APPLE_DIST_CERT_PASSWORD:
         required: false
 
 # The jobs read the code and upload an artifact.
@@ -63,8 +81,10 @@ jobs:
 
   simulator:
     needs: ios-check
-    runs-on: macos-latest
-    timeout-minutes: 45
+    # The Tart VM on the owner's work Mac carries ios-vm and costs no GitHub minutes.
+    # CI_IOS_RUNNER set to '["macos-latest"]' moves the job back to GitHub at 10x the minutes.
+    runs-on: ${{ fromJSON(vars.CI_IOS_RUNNER || '["self-hosted","ios-vm"]') }}
+    timeout-minutes: 60
     env:
       # mise x installs only what install_args named, so a tool the build skips costs no minutes.
       MISE_EXEC_AUTO_INSTALL: "false"
@@ -83,6 +103,7 @@ jobs:
           echo "IOS_OUT=$RUNNER_TEMP/ios-simulator" >> "$GITHUB_ENV"
           if [ -n "$XCODE" ]; then sudo xcode-select -s "/Applications/Xcode_$XCODE.app"; fi
           xcodebuild -version
+          xcrun simctl list runtimes
       - uses: workbench-soft/ci/actions/setup@main
         with:
           install_args: ${{ inputs.install_args }}
@@ -157,6 +178,9 @@ jobs:
           if [ -z "$pick" ]; then echo "::error::No iPhone simulator matches '$DEVICE'"; exit 1; fi
           echo "Booting $pick"
           udid="${pick%% *}"
+          # The ios-vm runner keeps its simulators between runs, so each run starts on a clean one.
+          xcrun simctl shutdown all || true
+          xcrun simctl erase "$udid"
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid" -b
           echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
@@ -193,6 +217,23 @@ jobs:
           find . -name '*.png' -newer "$IOS_OUT/launch.png" -not -path './node_modules/*' -not -path './ios/*' \
             -exec cp {} "$out/" \;
           exit "$status"
+      # Runs only once the build launched and the flows passed, so a crash never reaches App Store Connect.
+      - name: Upload to App Store Connect
+        if: inputs.upload
+        uses: workbench-soft/ci/actions/ios-upload@main
+        with:
+          # Composite steps run from the repo root, so the path carries app_dir.
+          project: ${{ inputs.app_dir }}/${{ inputs.workspace }}
+          scheme: ${{ inputs.scheme }}
+          marketing_version: ${{ inputs.marketing_version }}
+          asc_key_p8: ${{ secrets.ASC_API_KEY_P8 }}
+          asc_key_id: ${{ secrets.ASC_API_KEY_ID }}
+          asc_issuer_id: ${{ secrets.ASC_API_ISSUER_ID }}
+          dist_cert_p12_base64: ${{ secrets.APPLE_DIST_CERT_P12_BASE64 }}
+          dist_cert_password: ${{ secrets.APPLE_DIST_CERT_PASSWORD }}
+      - name: Shut the simulator down
+        if: always()
+        run: xcrun simctl shutdown all || true
       - name: Collect crash reports
         if: always()
         run: |

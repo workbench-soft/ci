@@ -97,3 +97,11 @@
 - **Changes** `ios-simulator.yml` skips `pnpm install` when `app_dir` holds `package-lock.json`, and runs `cap` through `npm exec` there. The caller installs in `web_build`, such as `npm ci && npm run build`, with `install_args: node`.
 - **Steps** this entry with the workflow and the docs, in one PR.
 - **Docs** README, CHANGELOG.
+
+### 2026-11-26 ios-vm runner and App Store upload
+
+- **Why** the 4 Capacitor apps ship to the App Store, and a GitHub macOS minute counts as 10. The owner's work Mac now hosts the Tart VM runner `wbs-ios`, labels `self-hosted, macOS, ARM64, ios-vm`, with Xcode 27.1 and iOS 27.0 and 27.1 simulator runtimes.
+- **Changes** `ios-simulator.yml` runs on `CI_IOS_RUNNER` or `[self-hosted, ios-vm]`, lists the runtimes, erases the simulator before each boot and shuts it down after. `upload: true` runs `actions/ios-upload` after the flows pass: `scripts/ios-profile.ts` finds or makes the App Store profile through the API, `scripts/ios-sign-project.ts` sets manual signing on the app target, then archive, export and `altool` with the API key.
+- **Signing** manual on the app target, since automatic signing needs a development profile and the team has no registered device. A command line setting would also reach the Swift packages.
+- **Steps** this entry with the workflow, the action, the scripts and the docs, pushed to `main`.
+- **Docs** README, CHANGELOG, `docs/architecture.md`, `docs/features.md`.
