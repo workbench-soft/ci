@@ -41,6 +41,10 @@ on:
         description: Once the flows pass, archive a signed App Store build and upload it to App Store Connect.
         type: boolean
         default: false
+      flows_gate:
+        description: A failed Maestro flow stops the upload. False lets a build that launches upload while its flows get fixed.
+        type: boolean
+        default: true
       marketing_version:
         description: The version the App Store record carries, such as 1.0. Empty keeps the project's.
         type: string
@@ -235,6 +239,7 @@ jobs:
             exit 1
           fi
       - name: Run the Maestro flows
+        continue-on-error: ${{ !inputs.flows_gate }}
         env:
           # The XCTest driver takes minutes to start in the ios-vm VM, past the 2 minute default.
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
