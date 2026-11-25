@@ -1,65 +1,243 @@
 name: Dependabot auto-merge
 
-# Merges a Dependabot PR as soon as it opens. PR checks are off, so the checks on main catch a bad update.
+# Tests a Dependabot PR on its own branch and merges it once the checks pass there.
+#   pull_request_target  starts the listed workflows on the PR branch, and Claude writes notes into the PR body
+#   workflow_run         merges when every listed workflow passed on the PR head, or lets Claude fix a red one
 # A major update waits for a person, unless the repo sets allow_major.
-# A repo calls this from a pull_request_target workflow. That runs from main, so it gets a write token
-# although Dependabot opened the PR. It checks out no PR code.
+# The caller listens to both events, so each job runs from main with a write token although Dependabot opened the PR.
+# Claude runs from the login of the PC runner, under the Claude subscription, so a public repo skips those jobs.
 on:
   workflow_call:
     inputs:
       workflows:
-        description: Workflow files to run on main after the merge, such as "checks.yml"
+        description: Workflow files that test the PR branch and run on main after the merge, such as "checks.yml"
         type: string
         required: true
       allow_major:
         description: Merge a major update too
         type: boolean
         default: false
+      fix:
+        description: Let Claude fix a branch whose checks fail
+        type: boolean
+        default: true
     secrets:
       dispatch_token:
-        description: Token that starts the workflows after the merge. Runs it starts fire workflow_run, so Release and Deploy web follow Checks
+        description: Token that starts the workflows. Runs it starts fire workflow_run, so the merge and Release follow them
+        required: false
+      claude_token:
+        description: Token from claude setup-token. Without it Claude uses the login of the PC, which ends after a few weeks
         required: false
 
 defaults:
   run:
     shell: bash
 
+env:
+  GH_REPO: ${{ github.repository }}
+  WORKFLOWS: ${{ inputs.workflows }}
+  FIX_MARK: "[dependabot-fix]"
+  BOT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
 jobs:
-  merge:
-    # A commit a person pushes to a Dependabot branch makes them the actor, so that PR waits for a review.
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+  test:
+    # A commit a person pushes to a Dependabot branch makes them the actor, so that PR waits for them.
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
     runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
+    concurrency:
+      group: dependabot-test-${{ github.event.pull_request.number }}
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       actions: write
     env:
       GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
       PR: ${{ github.event.pull_request.number }}
-      BASE: ${{ github.event.pull_request.base.ref }}
+      HEAD: ${{ github.event.pull_request.head.ref }}
     steps:
       - id: meta
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
-      - name: Merge
+      - name: Start the checks on the PR branch
         env:
           UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
-          ALLOW_MAJOR: ${{ inputs.allow_major }}
-          WORKFLOWS: ${{ inputs.workflows }}
           DISPATCH_TOKEN: ${{ secrets.dispatch_token }}
         run: |
-          if [ "$UPDATE_TYPE" = version-update:semver-major ] && [ "$ALLOW_MAJOR" != true ]; then
-            echo "A major update waits for a person to merge it."
+          # A run the workflow token starts fires no workflow_run, so the merge would not follow the checks.
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "::error::No dispatch_token, so no merge can follow the checks. Pass secrets.CI_DISPATCH_TOKEN."
+            exit 1
+          fi
+          if [ "$UPDATE_TYPE" = version-update:semver-major ]; then
+            gh label create dependabot-major --color B60205 --description "Major update, a person merges it" --force
+            gh pr edit "$PR" --add-label dependabot-major
+          fi
+          # A new Dependabot push brings fresh code, so the fix job gets its tries again.
+          gh pr edit "$PR" --remove-label needs-person 2>/dev/null || true
+          for workflow in $WORKFLOWS; do
+            if ! gh workflow view "$workflow" --ref "$HEAD" --yaml | grep -Eq '^[[:space:]]*workflow_dispatch:'; then
+              echo "::error::$workflow is missing on $HEAD or has no workflow_dispatch trigger. Add the trigger, then reopen PR #$PR."
+              exit 1
+            fi
+            GH_TOKEN=$DISPATCH_TOKEN gh workflow run "$workflow" --ref "$HEAD"
+          done
+
+  notes:
+    if: >-
+      github.event_name == 'pull_request_target' && github.event.repository.private &&
+      github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+    # Claude is logged in on the PC only.
+    runs-on: [self-hosted, local]
+    timeout-minutes: 15
+    concurrency:
+      group: dependabot-notes-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Write the notes into the PR body
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.claude_token }}
+        run: |
+          body="$RUNNER_TEMP/body.md"
+          gh pr view "$PR" --json body --jq .body | sed '/<!-- ai-notes -->/,/<!-- \/ai-notes -->/d' > "$body"
+          if gh pr view "$PR" --json body --jq .body | grep -q '<!-- ai-notes -->'; then
+            echo "The PR body has its notes."
+            exit 0
+          fi
+          prompt="$RUNNER_TEMP/prompt.md"
+          {
+            echo "Dependabot opened a PR in the repo ${GH_REPO#*/}, checked out in the current folder."
+            echo "Title: $(gh pr view "$PR" --json title --jq .title)"
+            echo
+            echo "Write a short note for the owner, who decides whether to merge. Read README.md and search the code for each package."
+            echo "Answer with Markdown only, in English, under 180 words, in this shape:"
+            echo
+            echo "**Verdict** safe to merge, or what to check first, in one line."
+            echo "**Gets better** a bullet per fix, feature or speed gain that matters to this repo."
+            echo "**Risks** a bullet per breaking change, removed API or new requirement, with the file it hits."
+            echo "**Where the repo uses it** the files and the products of the repo that load the package."
+            echo
+            echo "Name the files you found. Mark a guess as a guess. Skip changes that touch no code of this repo."
+            echo
+            echo "The PR body from Dependabot, with release notes and commits:"
+            head -c 20000 "$body"
+          } > "$prompt"
+          claude="$HOME/.local/bin/claude.exe"
+          [ -x "$claude" ] || claude=claude
+          notes="$RUNNER_TEMP/notes.md"
+          # Project settings only, so the hooks and rules of the person's own setup stay out of CI.
+          "$claude" -p --model sonnet --setting-sources project --max-turns 30 \
+            --allowedTools "Read,Grep,Glob" < "$prompt" > "$notes"
+          {
+            echo "<!-- ai-notes -->"
+            echo "## What this update means"
+            echo
+            cat "$notes"
+            echo
+            echo "_Written by Claude from the release notes and the code of this repo._"
+            echo "<!-- /ai-notes -->"
+            echo
+            cat "$body"
+          } > "$RUNNER_TEMP/new-body.md"
+          gh pr edit "$PR" --body-file "$RUNNER_TEMP/new-body.md"
+
+  decide:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/') &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '["self-hosted","local"]') }}
+    # Two check workflows can end together. They take turns, so one merges or one fixes.
+    concurrency:
+      group: dependabot-${{ github.event.workflow_run.head_branch }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    outputs:
+      pr: ${{ steps.state.outputs.pr }}
+      runs: ${{ steps.state.outputs.runs }}
+      action: ${{ steps.state.outputs.action }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - id: state
+        name: Read the PR and its checks
+        env:
+          ALLOW_MAJOR: ${{ inputs.allow_major }}
+          FIX: ${{ inputs.fix && github.event.repository.private }}
+        run: |
+          say() { echo "$1"; echo "action=$2" >> "$GITHUB_OUTPUT"; }
+          pr=$(gh api "repos/$GH_REPO/pulls?head=$GITHUB_REPOSITORY_OWNER:$BRANCH&state=open" \
+            --jq '[.[] | select(.user.login == "dependabot[bot]")][0] | if . == null then "" else "\(.number) \(.head.sha) \(.base.ref)" end')
+          [ -n "$pr" ] || { say "No open Dependabot PR for $BRANCH." stop; exit 0; }
+          read -r number head base <<< "$pr"
+          { echo "pr=$number"; echo "base=$base"; } >> "$GITHUB_OUTPUT"
+          [ "$head" = "$SHA" ] || { say "PR #$number moved on to $head, so this run of $SHA is old." stop; exit 0; }
+
+          strangers=$(gh api "repos/$GH_REPO/pulls/$number/commits?per_page=100" \
+            --jq "[.[] | .commit.author.email | select(contains(\"dependabot[bot]\") or . == \"$BOT_EMAIL\" | not)] | length")
+          [ "$strangers" = 0 ] || { say "A person pushed to PR #$number, so it waits for them." stop; exit 0; }
+          labels=$(gh pr view "$number" --json labels --jq '[.labels[].name] | join(" ")')
+          case " $labels " in *" needs-person "*) say "PR #$number waits for a person." stop; exit 0 ;; esac
+
+          failed=""
+          for workflow in $WORKFLOWS; do
+            result=$(gh api "repos/$GH_REPO/actions/workflows/$workflow/runs?head_sha=$SHA&per_page=20" \
+              --jq "[.workflow_runs[] | select(.head_branch == \"$BRANCH\")] | sort_by(-.id) | .[0] | if . == null then \"none\" elif .status != \"completed\" then \"pending\" else \"\(.conclusion) \(.id)\" end")
+            echo "$workflow on $SHA: $result"
+            case $result in
+              success*) ;;
+              failure* | timed_out*) failed="$failed ${result#* }" ;;
+              *) say "$workflow is $result, so its own end decides." stop; exit 0 ;;
+            esac
+          done
+
+          if [ -z "$failed" ]; then
+            case " $labels " in
+              *" dependabot-major "*)
+                if [ "$ALLOW_MAJOR" != true ]; then
+                  gh pr comment "$number" --body "The checks pass on this branch. A major update waits for a person to merge it."
+                  say "A major update waits for a person." stop
+                  exit 0
+                fi
+                ;;
+            esac
+            say "Every check passed on $SHA." merge
             exit 0
           fi
 
-          # A run queued behind an earlier one for the same PR finds it merged, and would start the checks twice.
-          state=$(gh pr view "$PR" --json state --jq .state)
-          if [ "$state" != OPEN ]; then
-            echo "PR #$PR is $state already."
+          echo "runs=${failed# }" >> "$GITHUB_OUTPUT"
+          tries=$(gh api "repos/$GH_REPO/pulls/$number/commits?per_page=100" \
+            --jq "[.[] | select(.commit.message | contains(\"$FIX_MARK\"))] | length")
+          if [ "$FIX" = true ] && [ "$tries" -lt 2 ]; then
+            say "The checks failed, so Claude tries fix $((tries + 1)) of 2." fix
             exit 0
           fi
+          gh label create needs-person --color D93F0B --description "The checks fail and the fix job gave up" --force
+          gh pr edit "$number" --add-label needs-person
+          gh pr comment "$number" --body "The checks still fail after $tries automatic fixes. Failed runs: $(for id in $failed; do printf '%s ' "$GITHUB_SERVER_URL/$GH_REPO/actions/runs/$id"; done)"
+          say "The checks fail and the fix job is out of tries." stop
 
+      - name: Merge
+        if: steps.state.outputs.action == 'merge'
+        env:
+          PR: ${{ steps.state.outputs.pr }}
+          BASE: ${{ steps.state.outputs.base }}
+          DISPATCH_TOKEN: ${{ secrets.dispatch_token }}
+        run: |
           # A token merge emits no push, so a push release workflow whose wait-for-checks.sh or release-gate.sh reads one of these
           # checks gets dispatched too. CHECKS_WORKFLOW defaults to checks.yml, as in the script.
           # An assignment stops the step when the call fails. A failing call inside for ... in $(...) went unseen, and its error
@@ -94,4 +272,86 @@ jobs:
           fi
           for workflow in $WORKFLOWS; do
             GH_TOKEN=$DISPATCH_TOKEN gh workflow run "$workflow" --ref "$BASE"
+          done
+
+  fix:
+    needs: decide
+    if: needs.decide.outputs.action == 'fix'
+    # Claude is logged in on the PC only, and the decide job lets public repos skip this job.
+    runs-on: [self-hosted, local]
+    timeout-minutes: 60
+    concurrency:
+      group: dependabot-${{ github.event.workflow_run.head_branch }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ needs.decide.outputs.pr }}
+      RUNS: ${{ needs.decide.outputs.runs }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+      # A broken install can be the failure itself, so Claude starts either way.
+      - uses: workbench-soft/ci/actions/setup@main
+        continue-on-error: true
+      - name: Let Claude fix the branch
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.claude_token }}
+        run: |
+          logs="$RUNNER_TEMP/failed.log"
+          for id in $RUNS; do
+            echo "== Run $id"
+            gh run view "$id" --log-failed | tail -n 400
+          done > "$logs"
+          report="$RUNNER_TEMP/fix-report.md"
+          prompt="$RUNNER_TEMP/prompt.md"
+          {
+            echo "Dependabot updated packages in this repo: $(gh pr view "$PR" --json title --jq .title)."
+            echo "The checks failed on this branch. Their failed log lines are in $logs."
+            echo
+            echo "Fix the code so the checks pass with the new versions. Keep the update: don't pin or roll back a package."
+            echo "Don't edit .github/workflows. Run the failing checks through mise, such as mise run lint and mise run test, until they pass."
+            echo "Then write $report in English: what broke, what you changed and why, and what you could not fix. Under 120 words."
+          } > "$prompt"
+          claude="$HOME/.local/bin/claude.exe"
+          [ -x "$claude" ] || claude=claude
+          # Project settings only, so the hooks and rules of the person's own setup stay out of CI.
+          "$claude" -p --model sonnet --setting-sources project --max-turns 80 --permission-mode acceptEdits \
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(mise:*),Bash(pnpm:*),Bash(npm:*),Bash(node:*),Bash(cargo:*),Bash(git diff:*),Bash(git status:*),Bash(git log:*)" \
+            --append-system-prompt "You run unattended in CI. Fix the build and stop. Don't commit, push, open PRs or touch TODO.md." \
+            < "$prompt" | tail -n 40 || true
+          [ -s "$report" ] || echo "Claude left no report." > "$report"
+
+      - name: Push the fix and test it again
+        env:
+          DISPATCH_TOKEN: ${{ secrets.dispatch_token }}
+        run: |
+          report="$RUNNER_TEMP/fix-report.md"
+          # The workflow token can't push a workflow file.
+          git add -A
+          git reset -q -- .github/workflows
+          comment="$RUNNER_TEMP/comment.md"
+          if git diff --cached --quiet; then
+            gh label create needs-person --color D93F0B --description "The checks fail and the fix job gave up" --force
+            gh pr edit "$PR" --add-label needs-person
+            { printf 'Claude found no change that fixes the checks.\n\n'; cat "$report"; } > "$comment"
+            gh pr comment "$PR" --body-file "$comment"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="$BOT_EMAIL" \
+            commit -q -m "fix: build with the updated packages $FIX_MARK"
+          git push origin "HEAD:$BRANCH"
+          { printf 'Claude pushed a fix, and the checks run again.\n\n'; cat "$report"; } > "$comment"
+          gh pr comment "$PR" --body-file "$comment"
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "::warning::No dispatch_token, so no merge follows these checks. Set the Actions secret CI_DISPATCH_TOKEN."
+            DISPATCH_TOKEN=$GH_TOKEN
+          fi
+          for workflow in $WORKFLOWS; do
+            GH_TOKEN=$DISPATCH_TOKEN gh workflow run "$workflow" --ref "$BRANCH"
           done

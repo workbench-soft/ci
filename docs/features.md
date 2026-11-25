@@ -28,9 +28,9 @@ Spec: [ios-apps](../specs/ios-apps.md).
 
 ## Dependabot auto merge
 
-- **What it gives** a Dependabot PR merges as soon as it opens, and the checks run on main.
-- **Limits** a major update waits for a person, unless the repo sets `allow_major`. A PR a person pushed to waits for a review.
-- **Checks** only the workflows the repo lists in `workflows`, space separated, run after the merge, with each push release workflow that waits on one of them. A listed file without `workflow_dispatch` stops the run before the merge.
+- **What it gives** a Dependabot PR merges once the checks pass on its branch, so a bad update stays off main. Claude fixes a red branch, 2 tries at most, and writes at the top of the PR what gets better, what can break and where the repo uses the package.
+- **Limits** a major update waits for a person, unless the repo sets `allow_major`. A PR a person pushed to waits for a review. A PR the fix job gave up on gets the `needs-person` label. Public repos get no fix and no notes, since Claude runs on the PC.
+- **Checks** only the workflows the repo lists in `workflows`, space separated, run on the branch and after the merge, with each push release workflow that waits on one of them. A listed file without `workflow_dispatch` stops the run before the merge.
 - **Follow-ups** with the `CI_DISPATCH_TOKEN` Dependabot secret passed, a Release or Deploy web on `workflow_run` of Checks follows too.
 
 Spec: [shared-workflows](../specs/shared-workflows.md).

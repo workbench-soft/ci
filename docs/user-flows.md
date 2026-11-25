@@ -40,20 +40,23 @@ flowchart LR
 ## Merge a Dependabot PR
 
 1. Dependabot opens or rebases a PR in the app repo.
-2. The repo's `dependabot-auto-merge.yml` runs on `pull_request_target` and calls the shared workflow.
-3. The job stops when a person made the event, when the update is major and `allow_major` is off, or when the PR is closed already.
-4. `gh pr merge --squash --delete-branch` merges the PR.
-5. `gh workflow run` starts each file in `workflows` on `main`, and each push release workflow that waits on one of them.
+2. The repo's `dependabot-auto-merge.yml` runs on `pull_request_target`. It starts each file in `workflows` on the PR branch, and Claude writes the notes at the top of the PR body.
+3. Each check run that ends calls the shared workflow again through `workflow_run`. It waits while another listed check runs.
+4. Red checks start Claude on the PC runner. Its fix commit goes to the branch, and the checks run again. After 2 tries the PR gets `needs-person`.
+5. Green checks merge the PR with `gh pr merge --squash`, unless the update is major and `allow_major` is off, or a person pushed to it.
+6. `gh workflow run` starts each file in `workflows` on `main`, and each push release workflow that waits on one of them.
 
 ```mermaid
 flowchart TD
   open["Dependabot opens the PR"] --> guard{"Dependabot made the event?"}
   guard -->|no| wait["Waits for a person"]
-  guard -->|yes| major{"Major update, allow_major off?"}
+  guard -->|yes| test["Checks on the PR branch, Claude notes"]
+  test --> result{"Checks pass?"}
+  result -->|no, under 2 tries| fix["Claude fix commit"] --> test
+  result -->|no, 2 tries| wait
+  result -->|yes| major{"Major update, allow_major off?"}
   major -->|yes| wait
-  major -->|no| state{"PR still open?"}
-  state -->|no| stop["Stops, the checks ran already"]
-  state -->|yes| merge["gh pr merge --squash"]
+  major -->|no| merge["gh pr merge --squash"]
   merge --> run["gh workflow run on main"]
 ```
 

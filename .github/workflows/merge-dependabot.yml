@@ -4,6 +4,11 @@ name: Merge Dependabot PRs
 on:
   pull_request_target:
     types: [opened, reopened, synchronize]
+  # Lint on a Dependabot branch decides the merge.
+  workflow_run:
+    workflows: [Lint]
+    types: [completed]
+    branches: ["dependabot/**"]
 
 permissions:
   contents: write
@@ -15,5 +20,7 @@ jobs:
     uses: ./.github/workflows/dependabot-auto-merge.yml
     with:
       workflows: lint.yml
+      # The repo is public, so no job runs on the PC, where Claude is logged in.
+      fix: false
     secrets:
       dispatch_token: ${{ secrets.CI_DISPATCH_TOKEN }}

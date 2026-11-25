@@ -7,8 +7,8 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 | Path                                          | What it does                                                                                                 |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `actions/setup`                               | Installs the tools from `mise.toml` and runs `pnpm install --frozen-lockfile`, copying packages on Windows   |
-| `.github/workflows/dependabot-auto-merge.yml` | Merges a Dependabot PR as soon as it opens, then runs the checks on main. A major update waits for a person  |
-| `.github/workflows/merge-dependabot.yml`      | Calls that workflow for this repo's own Dependabot PRs, then runs Lint on main                               |
+| `.github/workflows/dependabot-auto-merge.yml` | Tests a Dependabot PR on its branch, lets Claude fix it, merges it once green. A major update waits          |
+| `.github/workflows/merge-dependabot.yml`      | Calls that workflow for this repo's own Dependabot PRs, with Lint as the check                               |
 | `scripts/ios-check.ts`                        | Lists each Android only piece of an app with no iOS plan, and fails on one missing from `ios-check.json`     |
 | `actions/affected`                            | Says whether a product changed since its last green run or release, so CI skips the jobs of an unchanged one |
 | `actions/ios-check`                           | Runs `ios-check.ts` in a job of the app repo                                                                 |
@@ -34,6 +34,10 @@ The repo's `dependabot-auto-merge.yml`:
 on:
   pull_request_target:
     types: [opened, reopened, synchronize]
+  workflow_run: # the checks on the branch decide the merge
+    workflows: [Checks] # the name: of each file in workflows
+    types: [completed]
+    branches: ["dependabot/**"]
 permissions:
   contents: write
   pull-requests: write
@@ -42,14 +46,17 @@ jobs:
   merge:
     uses: workbench-soft/ci/.github/workflows/dependabot-auto-merge.yml@main
     with:
-      workflows: checks.yml # run on main after the merge
+      workflows: checks.yml # run on the branch, then on main after the merge
       allow_major: false # optional
+      fix: true # optional, Claude fixes red checks on the PC runner
     secrets:
-      dispatch_token: ${{ secrets.CI_DISPATCH_TOKEN }} # optional, lets Release follow Checks
+      dispatch_token: ${{ secrets.CI_DISPATCH_TOKEN }}
+      claude_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # optional, from claude setup-token
 ```
 
 - **List the checks** a token merge starts no push run. The shared workflow also dispatches each push release workflow whose publication guard names one of those checks.
-- **Dispatch token** the Dependabot secret `CI_DISPATCH_TOKEN` of each calling repo starts the listed workflows, so a Release or Deploy web on `workflow_run` follows them. Without it the workflow token starts them, and GitHub fires no `workflow_run` for such a run.
+- **Claude** the notes and the fix run on the PC runner, under the Claude subscription. `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` lasts a year, and without it the PC login ends after a few weeks. A public repo skips both jobs.
+- **Dispatch token** the Dependabot and Actions secret `CI_DISPATCH_TOKEN` of each calling repo starts the listed workflows, so a Release or Deploy web on `workflow_run` follows them. Without it the workflow token starts them, and GitHub fires no `workflow_run` for such a run.
 - **`workflow_dispatch`** each file in `workflows` needs this trigger. Without it the run fails before the merge and names the file, and the PR stays open.
 
 ## Run only what changed
@@ -134,8 +141,7 @@ To turn PR runs back on in a repo:
 
 1. Find the off triggers: `git grep -n "# pull_request:" .github/workflows`.
 2. In each hit, delete the two `# PR runs are off` comment lines and uncomment the `pull_request:` line and the lines indented under it.
-3. For Dependabot, switch `dependabot-auto-merge.yml` back to `workflow_run` on the check workflows if merges should wait for checks. The git history of this README holds that version.
-4. Change the "merge first" line for that repo in `writing-style.instructions.md` of `workbench-soft/agent-skills`, so agents wait for CI again.
+3. Change the "merge first" line for that repo in `writing-style.instructions.md` of `workbench-soft/agent-skills`, so agents wait for CI again.
 
 ## Test a change
 

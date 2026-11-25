@@ -6,11 +6,12 @@ A composite action and a reusable workflow. App repos call them from their own w
 flowchart LR
   subgraph app["App repo"]
     job["Workflow job"] -->|uses| setup["actions/setup<br/>mise + pnpm"]
-    pr["pull_request_target"] -->|calls| auto["dependabot-auto-merge.yml"]
+    pr["pull_request_target, workflow_run"] -->|calls| auto["dependabot-auto-merge.yml"]
     ios["ios.yml, by hand"] -->|calls| sim["ios-simulator.yml"]
   end
   setup --> tools["Pinned tools from mise.toml"]
-  auto --> gh["gh pr merge, gh workflow run"]
+  auto --> gh["gh workflow run on the branch, gh pr merge"]
+  auto -->|red checks, PC runner| claude["Claude Code fix and notes"]
   sim -->|first| check["actions/ios-check<br/>ios-check.ts"]
   sim -->|macOS| xcode["xcodebuild, simulator, Maestro"]
   auto -.->|dispatches the paired| appRelease["Release of the app repo"]
@@ -24,7 +25,7 @@ flowchart LR
 | Part       | Technology                    | Job                                                             |
 | ---------- | ----------------------------- | --------------------------------------------------------------- |
 | Setup      | GitHub composite action, mise | Same tools in every repo                                        |
-| Auto merge | Reusable workflow, `gh` CLI   | Merges Dependabot PRs                                           |
+| Auto merge | Reusable workflow, `gh` CLI   | Tests, fixes and merges Dependabot PRs                          |
 | iOS check  | `ios-check.ts`, Node          | Lists Android only pieces with no iOS plan                      |
 | iOS build  | Reusable workflow, macOS      | Simulator build, Maestro flows, screenshots                     |
 | Lint       | `lint.yml`                    | Checks this repo's own files                                    |
@@ -92,27 +93,29 @@ Two scripts share two formats, and `mise run test` keeps them in step.
     `mise.toml`, and each runner downloads its own copy.
 - **Cost to undo** medium. Each caller's setup steps change.
 
-### Dependabot: merge on open, check on main
+### Dependabot: test the branch, then merge
 
-- **Picked** a caller runs `dependabot-auto-merge.yml` from
-  `pull_request_target`. It squash merges at once, then starts the
-  `workflows` it lists on `main`. A major update waits for a person.
-- **Why** PR checks are off in the org repos, so a merge can't wait for them.
-  `pull_request_target` runs from `main` and gets a write token.
-- **Trade-off** a bad update reaches `main` first. The checks on `main` catch
-  it after.
+- **Picked** on `pull_request_target` the job starts the listed `workflows`
+  on the Dependabot branch. Their `workflow_run` merges the PR once each one
+  passed on its head, then starts them on `main`. A red branch goes to
+  Claude Code on the PC runner for 2 fix tries.
+- **Why** the merge on open put each bad update on `main`, and the next
+  build there failed.
+- **Trade-off** a merge waits for the checks, and each caller listens to
+  `workflow_run` too. Claude runs under the subscription of the PC login.
 - **Rejected**
-  - **Wait on `workflow_run` of the PR checks** the first version did that.
-    It stalled once PR checks went off.
-  - **GitHub auto merge** it waits for required checks, and the repos run
-    none on PRs.
-- **Cost to undo** medium. The README keeps the steps to turn PR runs and the
-  wait back on.
+  - **Merge on open** a bad update broke `main` until a person fixed it.
+  - **GitHub auto merge** it needs required checks, and the Free plan has no
+    branch rules on private repos.
+  - **GitHub Models** `actions/ai-inference` v3 calls the Copilot CLI, which
+    needs a paid seat.
+- **Cost to undo** medium. Each caller loses its `workflow_run` trigger.
 
 ### Merge guard: Dependabot opened it and made the event
 
-- **Picked** the job merges only when `dependabot[bot]` opened the PR and is
-  the actor. A run that finds the PR merged or closed stops.
+- **Picked** the job tests only when `dependabot[bot]` opened the PR and is
+  the actor. It merges only when each commit comes from Dependabot or the fix
+  job. A run that finds the PR merged or closed stops.
 - **Why** a commit a person pushed to a Dependabot branch merged with no
   review. A second run for a merged PR started the checks again.
 - **Trade-off** a person who fixes a Dependabot PR merges it by hand.
