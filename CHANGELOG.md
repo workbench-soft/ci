@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Purchase shots from nested folders** the Maestro step copies screenshots from the folders under its output dir up to the top, and the log lists them, so `iap_review_shots` finds them.
 - **JS log on a failed flow** a failed Maestro flow prints the app's JavaScript log of the last 15 minutes beside the texts on screen.
 - **Found workspace on upload** the upload step takes the workspace and scheme the build step found, so an Expo caller without `workspace` and `scheme` no longer fails with exit 66.
 - **JS stack at launch** a stopped app prints 30 lines after each error, so a React error shows its component stack.
