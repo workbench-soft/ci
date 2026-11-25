@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Purchase review screenshots** `ios-simulator.yml` takes `iap_review_shots`, and `actions/iap-review-shots` gives each listed in-app purchase its App Review screenshot from the Maestro flows, through the App Store Connect API.
+
 - **Launch log of Expo apps** a stopped app prints the errors of its own process, read from `CFBundleExecutable`, in place of a process named App, which only Capacitor apps have.
 - **Root privacy manifest** the simulator job also fails when the app's own `PrivacyInfo.xcprivacy` has `NSPrivacyTracking` true with no tracking domains, the ITMS-91064 cause of the first five App Store builds.
 - **Expo App Store upload** `actions/ios-upload` takes the `.xcworkspace` of a CocoaPods app, such as Expo, and writes the build number and version into an `Info.plist` that holds them as text.

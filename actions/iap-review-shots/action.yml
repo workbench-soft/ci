@@ -1,0 +1,38 @@
+name: In-app purchase review screenshots
+description: Gives each listed in-app purchase its App Review screenshot from the Maestro flows, so the purchase can go to review.
+inputs:
+  bundle_id:
+    description: The app's bundle id.
+    required: true
+  shots_dir:
+    description: The folder that holds the Maestro screenshots.
+    required: true
+  shots:
+    description: Space separated product=screenshot pairs, such as keeppad_pro=settings-02-pro.png.
+    required: true
+  asc_key_p8:
+    description: The App Store Connect API key, the text of the .p8 file.
+    required: true
+  asc_key_id:
+    description: The API key id.
+    required: true
+  asc_issuer_id:
+    description: The API issuer id.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Upload the review screenshots
+      shell: bash
+      env:
+        ASC_API_KEY_P8: ${{ inputs.asc_key_p8 }}
+        ASC_API_KEY_ID: ${{ inputs.asc_key_id }}
+        ASC_API_ISSUER_ID: ${{ inputs.asc_issuer_id }}
+        BUNDLE_ID: ${{ inputs.bundle_id }}
+        SHOTS_DIR: ${{ inputs.shots_dir }}
+        SHOTS: ${{ inputs.shots }}
+        SCRIPTS: ${{ github.action_path }}/../../scripts
+      run: |
+        # Word splitting turns the list into one argument per pair.
+        # shellcheck disable=SC2086
+        node "$SCRIPTS/iap-review-shots.ts" "$BUNDLE_ID" "$SHOTS_DIR" $SHOTS
