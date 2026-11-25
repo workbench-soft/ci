@@ -166,6 +166,24 @@ jobs:
           # The errors sit far above the tail, and the artifact can fail to upload, so the log names them.
           if [ "$status" -ne 0 ]; then grep -E "error:|fatal error" "$RUNNER_TEMP/xcodebuild.log" | sort -u | head -n 60 || true; fi
           exit "$status"
+      # App Store Connect drops a build whose manifest lists tracking domains without NSPrivacyTracking true (ITMS-91064).
+      - name: Check the privacy manifests
+        run: |
+          app=$(find "$RUNNER_TEMP/derived/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' | head -n 1)
+          status=0
+          while IFS= read -r file; do
+            name="${file#"$app"/}"
+            domains=$(plutil -extract NSPrivacyTrackingDomains raw "$file" 2>/dev/null || echo 0)
+            tracking=$(plutil -extract NSPrivacyTracking raw "$file" 2>/dev/null || echo missing)
+            echo "$name: NSPrivacyTracking $tracking, $domains tracking domains"
+            if [ "$domains" != 0 ] && [ "$tracking" != true ]; then
+              echo "::error::$name lists $domains tracking domains with NSPrivacyTracking $tracking"
+              plutil -p "$file"
+              status=1
+            fi
+          done < <(find "$app" -name PrivacyInfo.xcprivacy)
+          if [ ! -f "$app/PrivacyInfo.xcprivacy" ]; then echo "::warning::The app has no PrivacyInfo.xcprivacy at its root"; fi
+          exit "$status"
       - name: Boot an iPhone simulator
         env:
           DEVICE: ${{ inputs.device }}
