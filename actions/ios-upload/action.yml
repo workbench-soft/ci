@@ -3,7 +3,7 @@ description: Archives a signed App Store build of an Xcode project and uploads i
 
 inputs:
   project:
-    description: The .xcodeproj, relative to the working directory.
+    description: The .xcodeproj, or the .xcworkspace of a CocoaPods app, relative to the working directory.
     required: true
   scheme:
     description: The Xcode scheme.
@@ -64,10 +64,18 @@ runs:
         work="$RUNNER_TEMP/ios-upload"
         rm -rf "$work" && mkdir -p "$work"
         echo "IOS_UPLOAD_WORK=$work" >> "$GITHUB_ENV"
-        if [ -z "$BUNDLE_ID" ]; then
-          BUNDLE_ID=$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -showBuildSettings 2>/dev/null |
-            awk -F' = ' '/ PRODUCT_BUNDLE_IDENTIFIER = / { print $2; exit }')
-        fi
+        # A CocoaPods app such as Expo builds from its workspace, and the signing goes into the app project beside it.
+        flag=-project
+        pbxproj="$PROJECT/project.pbxproj"
+        case "$PROJECT" in *.xcworkspace)
+          flag=-workspace
+          pbxproj="${PROJECT%.xcworkspace}.xcodeproj/project.pbxproj"
+          ;;
+        esac
+        settings=$(xcodebuild "$flag" "$PROJECT" -scheme "$SCHEME" -configuration Release -showBuildSettings 2>/dev/null)
+        setting() { awk -F' = ' -v key="$1" '$1 ~ "^ *" key "$" { print $2; exit }' <<< "$settings"; }
+        if [ -z "$BUNDLE_ID" ]; then BUNDLE_ID=$(setting PRODUCT_BUNDLE_IDENTIFIER); fi
+        info_plist="$(setting SRCROOT)/$(setting INFOPLIST_FILE)"
         echo "Bundle $BUNDLE_ID"
 
         # A keychain of this run only holds the certificate, and the cleanup step deletes it.
@@ -88,15 +96,28 @@ runs:
         profile=$(node "$SCRIPTS/ios-profile.ts" "$BUNDLE_ID" "$profiles")
         mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
         cp "$profiles"/*.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/"
-        node "$SCRIPTS/ios-sign-project.ts" "$PROJECT/project.pbxproj" "$BUNDLE_ID" "$TEAM" "$profile"
+        node "$SCRIPTS/ios-sign-project.ts" "$pbxproj" "$BUNDLE_ID" "$TEAM" "$profile"
 
         # Each upload needs a higher build number, and the date and time of the run give one.
         build=$(date -u +%y%m%d%H%M)
         echo "build_number=$build" >> "$GITHUB_OUTPUT"
         extra=()
         if [ -n "$MARKETING" ]; then extra+=("MARKETING_VERSION=$MARKETING"); fi
+        # Expo writes the numbers into Info.plist as text, where the build settings above don't reach.
+        if [ -f "$info_plist" ]; then
+          case "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info_plist" 2>/dev/null)" in
+            '$('*) ;;
+            *) /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build" "$info_plist" ;;
+          esac
+          if [ -n "$MARKETING" ]; then
+            case "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist" 2>/dev/null)" in
+              '$('*) ;;
+              *) /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING" "$info_plist" ;;
+            esac
+          fi
+        fi
         status=0
-        xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
+        xcodebuild "$flag" "$PROJECT" -scheme "$SCHEME" -configuration Release \
           -destination 'generic/platform=iOS' -archivePath "$work/App.xcarchive" \
           OTHER_CODE_SIGN_FLAGS="--keychain $keychain" CURRENT_PROJECT_VERSION="$build" ${extra[@]+"${extra[@]}"} \
           archive > "$work/archive.log" 2>&1 || status=$?

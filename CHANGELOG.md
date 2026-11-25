@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Expo App Store upload** `actions/ios-upload` takes the `.xcworkspace` of a CocoaPods app, such as Expo, and writes the build number and version into an `Info.plist` that holds them as text.
+- **Privacy manifest check** the simulator job fails when a `PrivacyInfo.xcprivacy` in the app lists tracking domains without `NSPrivacyTracking` true, which App Store Connect rejects as ITMS-91064, and prints each manifest it finds.
 - **iOS on the work Mac** `ios-simulator.yml` runs on the `ios-vm` Tart VM runner, at no GitHub minutes, and `upload: true` signs and uploads the build to App Store Connect once the flows pass.
 - **Secrets script** `dependabot-ai-secrets.ps1` quotes the Git Bash path for `bws run`, which failed on the space in `Program Files`.
 - **Dependabot waits for green** the shared auto-merge runs the checks on the Dependabot branch and merges once they pass, so a bad update stays off `main`. Claude Code on the PC runner fixes a red branch, 2 tries at most, then the PR gets `needs-person`. Claude also writes at the top of each PR what gets better, what can break and where the repo uses the package. Callers add a `workflow_run` trigger and an Actions secret `CI_DISPATCH_TOKEN`.
