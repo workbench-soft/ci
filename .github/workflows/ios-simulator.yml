@@ -267,6 +267,11 @@ jobs:
           # takeScreenshot writes beside the flows on some versions, so the new pictures join the artifact.
           find . -name '*.png' -newer "$IOS_OUT/launch.png" -not -path './node_modules/*' -not -path './ios/*' \
             -exec cp {} "$out/" \;
+          # Maestro 2 can keep takeScreenshot pictures in a folder per run under the output dir, so they move up to
+          # where the purchase screenshot step looks.
+          find "$out" -mindepth 2 -name '*.png' -not -path "$out/debug/*" -exec cp -n {} "$out/" \;
+          echo "Screenshots: $(find "$out" -maxdepth 1 -name '*.png' -exec basename {} \; | tr '\n' ' ')"
+          echo "Nested pictures: $(find "$out" -mindepth 2 -name '*.png' | head -n 40 | tr '\n' ' ')"
           if [ "$status" -ne 0 ]; then
             # The artifact can fail to upload, so the log shows the texts on screen when a flow failed.
             echo "Texts on screen now:"
