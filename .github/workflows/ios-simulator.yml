@@ -230,6 +230,9 @@ jobs:
             exit 1
           fi
       - name: Run the Maestro flows
+        env:
+          # The XCTest driver takes minutes to start in the ios-vm VM, past the 2 minute default.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
         run: |
           if [ ! -d e2e/maestro ]; then echo "No e2e/maestro folder, so only the launch screenshot is taken."; exit 0; fi
           # The PC pins the same Maestro in the home mise config.
