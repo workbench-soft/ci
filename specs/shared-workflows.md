@@ -84,3 +84,18 @@ A docs push still cut a release, and a change to one package of memories started
 - **Safe side** a run by hand, no base, a change to the lockfile, `mise.toml`, the root `package.json`, `.github/actions/**` or the running workflow, and a file that no package or product owns each give `all=true`.
 - **Config** a repo with several products lists them in `.github/affected.json`, each with `packages`, `paths` and `tag`. A repo with one product needs none.
 - **Own release** `release.yml` of this repo runs the step with `since: release`, so a push with no change outside Markdown since the last tag cuts no release.
+
+## 2026-11-25 Merge a Dependabot PR only once its checks pass
+
+A merge on open put each bad update straight on `main`, so the next build there failed. The new flow tests the branch first, lets Claude fix a red branch, and writes a note on the update into the PR.
+
+- **Test first** on `pull_request_target` the job starts each listed workflow on the Dependabot branch with `dispatch_token`. It merges no code at that point.
+- **Merge on green** the caller also listens to `workflow_run` of its check workflows on `dependabot/**` branches. When every listed workflow passed on the head commit of the PR, the job merges it and starts the workflows on `main`, as before.
+- **Fix on red** a failed run starts the `fix` job on the PC runner. Claude Code reads the failed logs, edits the code to build with the new version, and pushes one commit marked `[dependabot-fix]`. The job then starts the checks on the branch again.
+- **Two tries** after 2 fix commits the job stops, adds the `needs-person` label and comments the reason.
+- **Notes** the `notes` job asks Claude what gets better, what can break and where the repo uses the package. The answer goes at the top of the PR body, between `<!-- ai-notes -->` markers, and a rebase by Dependabot writes it again.
+- **Who merges** the PR merges only when each commit on it comes from Dependabot or from the fix job. A commit a person pushes leaves the PR to that person.
+- **Major updates** get the checks, the fix and the notes, then wait for a person unless the repo sets `allow_major`.
+- **Free** Claude runs from the login of the PC, under the Claude subscription, with no API key. GitHub Models was dropped: `actions/ai-inference` v3 calls the Copilot CLI, which needs a paid seat. A public repo skips the `fix` and `notes` jobs, since its jobs can't run on the PC.
+- **Unattended Claude** it runs with `--setting-sources project`, so the hooks and rules of the person's own setup stay out, and with a short list of allowed tools. The notes job gets read tools only.
+- **Token** the `workflow_run` path reads Actions secrets, since the person's token started the checks. Each calling repo needs `CI_DISPATCH_TOKEN` as an Actions secret beside the Dependabot one.
