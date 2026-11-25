@@ -240,8 +240,10 @@ jobs:
           mkdir -p "$IOS_OUT/crashes"
           find "$HOME/Library/Logs/DiagnosticReports" -name '*.ips' -newer "$GITHUB_EVENT_PATH" \
             -exec cp {} "$IOS_OUT/crashes/" \; 2>/dev/null || true
+      # The org artifact storage can be full, and a failed upload of the logs must not fail a good build.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
+        continue-on-error: true
         with:
           name: ios-simulator
           path: ${{ runner.temp }}/ios-simulator
