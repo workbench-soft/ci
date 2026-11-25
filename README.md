@@ -55,7 +55,7 @@ jobs:
 ```
 
 - **List the checks** a token merge starts no push run. The shared workflow also dispatches each push release workflow whose publication guard names one of those checks.
-- **Claude** the notes and the fix run on the PC runner, under the Claude subscription. `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` lasts a year, and without it the PC login ends after a few weeks. A public repo skips both jobs.
+- **Claude** the notes and the fix run on the PC runner, under the Claude subscription. `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` lasts a year, and without it the PC login ends after a few weeks. A public repo skips both jobs. `scripts/person-steps/dependabot-ai-secrets.ps1` makes the token and sets both secrets in each calling repo.
 - **Dispatch token** the Dependabot and Actions secret `CI_DISPATCH_TOKEN` of each calling repo starts the listed workflows, so a Release or Deploy web on `workflow_run` follows them. Without it the workflow token starts them, and GitHub fires no `workflow_run` for such a run.
 - **`workflow_dispatch`** each file in `workflows` needs this trigger. Without it the run fails before the merge and names the file, and the PR stays open.
 
