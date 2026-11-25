@@ -164,6 +164,8 @@ jobs:
           flag=-workspace
           case "$WORKSPACE" in *.xcodeproj) flag=-project ;; esac
           echo "Building $WORKSPACE, scheme $SCHEME"
+          # The upload step needs the workspace and scheme found here, not the raw inputs.
+          { echo "IOS_WORKSPACE=$WORKSPACE"; echo "IOS_SCHEME=$SCHEME"; } >> "$GITHUB_ENV"
           status=0
           mise x -- xcodebuild "$flag" "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
@@ -292,8 +294,8 @@ jobs:
         uses: workbench-soft/ci/actions/ios-upload@main
         with:
           # Composite steps run from the repo root, so the path carries app_dir.
-          project: ${{ inputs.app_dir }}/${{ inputs.workspace }}
-          scheme: ${{ inputs.scheme }}
+          project: ${{ inputs.app_dir }}/${{ env.IOS_WORKSPACE }}
+          scheme: ${{ env.IOS_SCHEME }}
           marketing_version: ${{ inputs.marketing_version }}
           asc_key_p8: ${{ secrets.ASC_API_KEY_P8 }}
           asc_key_id: ${{ secrets.ASC_API_KEY_ID }}

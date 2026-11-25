@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Found workspace on upload** the upload step takes the workspace and scheme the build step found, so an Expo caller without `workspace` and `scheme` no longer fails with exit 66.
 - **JS stack at launch** a stopped app prints 30 lines after each error, so a React error shows its component stack.
 - **Purchase review screenshots** `ios-simulator.yml` takes `iap_review_shots`, and `actions/iap-review-shots` gives each listed in-app purchase its App Review screenshot from the Maestro flows, through the App Store Connect API.
 
