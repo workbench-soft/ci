@@ -224,6 +224,8 @@ jobs:
           app=$(find "$RUNNER_TEMP/derived/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' | head -n 1)
           bundle=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")
           echo "APP_ID=$bundle" >> "$GITHUB_ENV"
+          # The ios-vm runner keeps the last build of each app, so the owner can install them all in one simulator.
+          mkdir -p "$HOME/wbs-apps" && rm -rf "$HOME/wbs-apps/$bundle.app" && cp -R "$app" "$HOME/wbs-apps/$bundle.app" || true
           xcrun simctl install "$SIM_UDID" "$app"
           xcrun simctl launch "$SIM_UDID" "$bundle"
           # The first screen needs time to load the JS bundle.

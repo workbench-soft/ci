@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Kept simulator builds** the simulator job copies each built `.app` to `~/wbs-apps/` of the runner, so the `ios-vm` VM holds the last build of every app for a hands-on look.
 - **Purchase shots from nested folders** the Maestro step copies screenshots from the folders under its output dir up to the top, and the log lists them, so `iap_review_shots` finds them.
 - **JS log on a failed flow** a failed Maestro flow prints the app's JavaScript log of the last 15 minutes beside the texts on screen.
 - **Found workspace on upload** the upload step takes the workspace and scheme the build step found, so an Expo caller without `workspace` and `scheme` no longer fails with exit 66.

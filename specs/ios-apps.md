@@ -65,6 +65,9 @@
 - **Run** boots the newest iPhone simulator, installs the `.app`, launches it
   for a first screenshot, then runs `e2e/maestro/` with Maestro `cli-2.12.1`,
   the version the PC pins.
+- **Kept build** the job copies the `.app` to `~/wbs-apps/<bundle id>.app`
+  of the runner. On the `ios-vm` VM, `mac-ios-apps.sh` of `workspace`
+  installs each kept app into one simulator the owner taps through.
 - **Artifact** `ios-simulator` holds the screenshots, the Maestro output and
   the last 300 lines of the xcodebuild log.
 - **Secrets** one optional secret `build_env` holds `KEY=value` lines for the
