@@ -210,7 +210,7 @@ jobs:
               | .value[] | select(.name | startswith("iPhone")) | select($name == "" or .name == $name)
               | {v: $v, udid, name}]
             | sort_by(.v) | last // empty | "\(.udid) \(.name)"')
-          if [ -z "$pick" ]; then echo "::error::No iPhone simulator matches '$DEVICE'"; exit 1; fi
+          if [ -z "$pick" ]; then echo "::error::No iPhone simulator matches '$DEVICE'"; xcrun simctl list devices available | grep -E "^--|iPhone"; exit 1; fi
           echo "Booting $pick"
           udid="${pick%% *}"
           # The ios-vm runner keeps its simulators between runs, so each run starts on a clean one.
