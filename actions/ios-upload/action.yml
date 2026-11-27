@@ -37,6 +37,9 @@ outputs:
   build_number:
     description: The CFBundleVersion of the uploaded build.
     value: ${{ steps.archive.outputs.build_number }}
+  marketing_version:
+    description: The CFBundleShortVersionString of the uploaded build, past the newest version Apple approved.
+    value: ${{ steps.archive.outputs.marketing_version }}
 
 runs:
   using: composite
@@ -77,6 +80,14 @@ runs:
         if [ -z "$BUNDLE_ID" ]; then BUNDLE_ID=$(setting PRODUCT_BUNDLE_IDENTIFIER); fi
         info_plist="$(setting SRCROOT)/$(setting INFOPLIST_FILE)"
         echo "Bundle $BUNDLE_ID"
+        # Apple refuses a build for a version it approved, so a build of a live app takes the next version.
+        current="${MARKETING:-$(setting MARKETING_VERSION)}"
+        if [ -z "$current" ] && [ -f "$info_plist" ]; then
+          current=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist" 2> /dev/null || true)
+        fi
+        case "$current" in '' | '$('*) ;; *) MARKETING=$(node "$SCRIPTS/ios-version.ts" "$BUNDLE_ID" "$current") ;; esac
+        echo "Version ${MARKETING:-from the project}"
+        echo "marketing_version=$MARKETING" >> "$GITHUB_OUTPUT"
 
         # A keychain of this run only holds the certificate, and the cleanup step deletes it.
         keychain="$work/signing.keychain-db"
