@@ -3,7 +3,7 @@ version: 2
 
 updates:
   - package-ecosystem: github-actions
-    directories: [/, /actions/setup, /actions/ios-check]
+    directories: [/, /actions/setup, /actions/ios-check, /actions/play-upload]
     schedule:
       interval: weekly
     groups:
