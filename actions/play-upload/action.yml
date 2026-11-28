@@ -1,0 +1,70 @@
+name: Play upload
+description: Sends an Android bundle to a Google Play track with What's New in each store language.
+
+inputs:
+  service_account_json:
+    description: The Play service account key, as JSON text.
+    required: true
+  package:
+    description: The application id, such as com.workbenchsoft.keeppad.
+    required: true
+  release_files:
+    description: The bundle paths, comma separated. Globs work.
+    required: true
+  release_name:
+    description: The release name Play Console shows, such as v1.4.2.
+    required: true
+  track:
+    description: internal, alpha, beta or production.
+    required: true
+  notes_dir:
+    description: A folder of whatsnew-<locale> files. Empty sends the shared notes of notes.json.
+    default: ""
+  mapping_file:
+    description: The R8 mapping file. Empty sends none.
+    default: ""
+  changes_not_sent_for_review:
+    description: Set to "true" for an app Play won't send for review on its own.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - id: notes
+      name: Write the What's New files
+      shell: bash
+      env:
+        NOTES_DIR: ${{ inputs.notes_dir }}
+        NOTES: ${{ github.action_path }}/notes.json
+      run: |
+        set -eu
+        if [ -n "$NOTES_DIR" ]; then
+          [ -d "$NOTES_DIR" ] || { echo "::error::notes_dir $NOTES_DIR is missing"; exit 1; }
+          echo "dir=$NOTES_DIR" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        dir="$RUNNER_TEMP/play-whatsnew"
+        rm -rf "$dir"
+        mkdir -p "$dir"
+        # Each store locale takes the line of its language prefix, so en-US and en-AU share "en".
+        for locale in en-US en-AU ru-RU de-DE fr-FR es-ES zh-CN ja-JP ko-KR no-NO; do
+          lang=${locale%%-*}
+          text=$(sed -n "s/^ *\"$lang\": *\"\(.*\)\",\{0,1\} *\$/\1/p" "$NOTES")
+          [ -n "$text" ] || { echo "::error::notes.json has no line for $lang"; exit 1; }
+          printf '%s' "$text" > "$dir/whatsnew-$locale"
+          echo "$locale: $text"
+        done
+        echo "dir=$dir" >> "$GITHUB_OUTPUT"
+    - name: Send the bundle to Google Play
+      # A third party action that holds the Play key, so a commit pins it. Dependabot moves the pin.
+      uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+      with:
+        serviceAccountJsonPlainText: ${{ inputs.service_account_json }}
+        packageName: ${{ inputs.package }}
+        releaseFiles: ${{ inputs.release_files }}
+        releaseName: ${{ inputs.release_name }}
+        track: ${{ inputs.track }}
+        status: completed
+        whatsNewDirectory: ${{ steps.notes.outputs.dir }}
+        mappingFile: ${{ inputs.mapping_file }}
+        changesNotSentForReview: ${{ inputs.changes_not_sent_for_review }}

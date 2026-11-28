@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Play upload with notes** `actions/play-upload` sends a bundle to a Google Play track with What's New in `en-US`, `en-AU` and 8 more store languages, so a nightly production release no longer goes out with empty notes.
 - **iOS version** `ios-upload` moves a build past the newest version Apple approved, so a nightly build of a live app uploads.
 
 - **Kept simulator builds** the simulator job copies each built `.app` to `~/wbs-apps/` of the runner, so the `ios-vm` VM holds the last build of every app for a hands-on look.

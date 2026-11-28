@@ -28,6 +28,14 @@ Spec: [shared-workflows](../specs/shared-workflows.md).
 
 Spec: [ios-apps](../specs/ios-apps.md).
 
+## Google Play upload
+
+- **What it gives** each nightly bundle reaches its Play track with What's New in 9 languages, so a production release shows notes.
+- **Where** the bundle step of an app's release workflow, `uses: workbench-soft/ci/actions/play-upload@main`.
+- **Limits** the shared text is one line per language. A repo with its own notes passes `notes_dir`.
+
+Spec: [play-upload](../specs/play-upload.md).
+
 ## Dependabot auto merge
 
 - **What it gives** a Dependabot PR merges once the checks pass on its branch, so a bad update stays off main. Claude fixes a red branch, 2 tries at most, and writes at the top of the PR what gets better, what can break and where the repo uses the package.

@@ -12,6 +12,7 @@ Shared GitHub Actions steps for the workbench-soft repos. A fix here reaches eac
 | `scripts/ios-check.ts`                        | Lists each Android only piece of an app with no iOS plan, and fails on one missing from `ios-check.json`     |
 | `actions/affected`                            | Says whether a product changed since its last green run or release, so CI skips the jobs of an unchanged one |
 | `actions/ios-check`                           | Runs `ios-check.ts` in a job of the app repo                                                                 |
+| `actions/play-upload`                         | Sends an Android bundle to a Google Play track with What's New in 9 languages                                |
 | `.github/workflows/ios-simulator.yml`         | Builds an Expo or Capacitor app for the iPhone simulator, runs its Maestro flows, uploads the screenshots    |
 
 ## Use it in a repo
@@ -135,6 +136,25 @@ jobs:
 - **Purchase shots** `iap_review_shots` takes space separated `product=screenshot` pairs. After the flows, `actions/iap-review-shots` uploads each Maestro screenshot as the App Review screenshot of its in-app purchase, with the three `ASC_API_*` secrets. A purchase that has one keeps it.
 - **Artifact** `ios-simulator` holds the screenshots, the Maestro report and debug output, crash reports and the last 300 lines of the xcodebuild log. `gh run download <run> -n ios-simulator` fetches it.
 - **Another workflow** `uses: workbench-soft/ci/actions/ios-check@main` with `app_dir` runs the check alone, after `actions/setup` puts Node 24 on PATH.
+
+## Send a bundle to Google Play
+
+`actions/play-upload` sends a bundle to a Play track with What's New in each store language. The nightly bundle step of an app repo:
+
+```yaml
+- uses: workbench-soft/ci/actions/play-upload@main
+  with:
+    service_account_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    package: com.workbenchsoft.keeppad
+    release_files: dist/keeppad.aab
+    release_name: ${{ steps.version.outputs.tag }}
+    track: ${{ vars.PLAY_TRACK }}
+```
+
+- **Notes** the action writes `whatsnew-<locale>` for `en-US`, `en-AU`, `ru-RU`, `de-DE`, `fr-FR`, `es-ES`, `zh-CN`, `ja-JP`, `ko-KR` and `no-NO` from `actions/play-upload/notes.json`. A language missing from the listing still passes Play's check.
+- **Own notes** `notes_dir` points at a folder of the repo's own `whatsnew-*` files.
+- **Extras** `mapping_file` sends the R8 mapping. `changes_not_sent_for_review: "true"` uploads without a review request, for an app Play won't send on its own.
+- **Release** the upload goes out with `status: completed`, so a `production` track release starts at once.
 
 ## CI runs on main only
 
